@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/boterror"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/handler"
+	"github.com/Entreeka/go-interactive-game-tg-bot/internal/service"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/logger"
+	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/postgres"
+	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/store"
+	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/tg"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"runtime/debug"
 	"sync"
@@ -15,8 +19,16 @@ import (
 type ViewFunc func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error
 
 type Bot struct {
-	bot *tgbotapi.BotAPI
-	log *logger.Logger
+	bot   *tgbotapi.BotAPI
+	log   *logger.Logger
+	store *store.Store
+	tgMsg *tg.TelegramMsg
+	pg    *postgres.Postgres
+
+	userService      service.UserService
+	answersService   service.AnswersService
+	questionsService service.QuestionsService
+	contestService   service.ContestService
 
 	cmdView      map[string]ViewFunc
 	callbackView map[string]ViewFunc
@@ -26,10 +38,25 @@ type Bot struct {
 }
 
 func NewBot(bot *tgbotapi.BotAPI,
-	log *logger.Logger) *Bot {
+	log *logger.Logger,
+	store *store.Store,
+	tgMsg *tg.TelegramMsg,
+	pg *postgres.Postgres,
+	userService service.UserService,
+	answersService service.AnswersService,
+	questionsService service.QuestionsService,
+	contestService service.ContestService,
+) *Bot {
 	return &Bot{
-		bot: bot,
-		log: log,
+		bot:              bot,
+		log:              log,
+		store:            store,
+		tgMsg:            tgMsg,
+		pg:               pg,
+		userService:      userService,
+		answersService:   answersService,
+		questionsService: questionsService,
+		contestService:   contestService,
 	}
 }
 
@@ -91,6 +118,21 @@ func (b *Bot) handlerUpdate(ctx context.Context, update *tgbotapi.Update) {
 	// if write message
 	if update.Message != nil {
 		b.log.Info("[%s] %s", update.Message.From.UserName, update.Message.Text)
+
+		isProcessing, err := b.isStoreProcessing(ctx, update)
+		if err != nil {
+			b.log.Error("failed in isStoreProcessing: %v", err)
+			handler.HandleError(b.bot, update, err.Error())
+			return
+		}
+		if isProcessing {
+			return
+		}
+
+		if err := b.userService.CreateUserIfNotExist(ctx, userUpdateToModel(update)); err != nil {
+			b.log.Error("userService.CreateUserIfNotExist: failed to create user: %v", err)
+			return
+		}
 
 		var view ViewFunc
 

@@ -28,13 +28,18 @@ create table if not exists contest(
 
 create table if not exists questions(
     id int generated always as identity,
+    contest_id int,
     created_by_user bigint,
     created_at timestamp,
     updated_at timestamp,
     question_name varchar(500),
     file_id varchar(100),
-    primary key (id)
+    deadline timestamp,
+    primary key (id),
+    foreign key (contest_id)
+        references contest (id) on delete cascade
 );
+
 
 create table if not exists answers(
     id int generated always as identity,
@@ -78,3 +83,4 @@ create table if not exists history_points(
     foreign key (questions_id)
         references questions (id) on delete cascade
 );
+

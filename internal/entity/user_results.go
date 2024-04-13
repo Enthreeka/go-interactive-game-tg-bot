@@ -5,4 +5,6 @@ type UserResult struct {
 	UserID      int64 `json:"user_id"`
 	ContestID   int   `json:"contest_id"`
 	TotalPoints int   `json:"total_points"`
+
+	User User `json:"user"`
 }
