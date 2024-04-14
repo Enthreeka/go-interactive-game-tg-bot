@@ -13,8 +13,11 @@ import (
 
 type AnswersService interface {
 	CreateAnswer(ctx context.Context, tx pgx.Tx, answer *entity.Answer) error
-	GetAnswerByID(ctx context.Context, id int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error)
+	GetAnswersByID(ctx context.Context, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error)
 	DeleteAnswer(ctx context.Context, id int) error
+	GetContestIDByQuestionID(ctx context.Context, questionID int) (int, error)
+	GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error)
+	AddHistoryPoints(ctx context.Context, tx pgx.Tx, userID int64, questionID, awardedPoints int) error
 }
 
 type answersService struct {
@@ -62,8 +65,8 @@ func (a *answersService) CreateAnswer(ctx context.Context, tx pgx.Tx, answer *en
 	return nil
 }
 
-func (a *answersService) GetAnswerByID(ctx context.Context, id int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error) {
-	answers, err := a.answerRepo.GetAnswerByID(ctx, id)
+func (a *answersService) GetAnswersByID(ctx context.Context, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error) {
+	answers, err := a.questionAnswerRepo.GetAnswersByQuestion(ctx, questionID)
 	if err != nil {
 		a.log.Error("answerRepo.GetAnswerByID: %v", err)
 		return nil, nil, err
@@ -104,4 +107,17 @@ func (q *answersService) createAnswerMarkup(answers []entity.Answer, method stri
 
 func (a *answersService) DeleteAnswer(ctx context.Context, id int) error {
 	return a.answerRepo.DeleteAnswer(ctx, id)
+}
+
+func (a *answersService) GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error) {
+	return a.answerRepo.GetAnswerByID(ctx, id)
+}
+
+func (a *answersService) GetContestIDByQuestionID(ctx context.Context, questionID int) (int, error) {
+	return a.questionRepo.GetContestIDByQuestionID(ctx, questionID)
+}
+
+func (a *answersService) AddHistoryPoints(ctx context.Context, tx pgx.Tx, userID int64, questionID, awardedPoints int) error {
+	a.log.Info("Insert new result: userID - %d, questionID - %d, awardedPoints - %d", userID, questionID, awardedPoints)
+	return a.historyPointsRepo.AddHistoryPoints(ctx, tx, userID, questionID, awardedPoints)
 }

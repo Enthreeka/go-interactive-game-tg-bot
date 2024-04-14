@@ -20,6 +20,7 @@ type User struct {
 	Phone       string    `json:"phone,omitempty"`
 	ChannelFrom string    `json:"channel_from,omitempty"`
 	UserRole    UserRole  `json:"user_role"`
+	BlockedBot  bool      `json:"blocked_bot"`
 }
 
 func (u User) String() string {

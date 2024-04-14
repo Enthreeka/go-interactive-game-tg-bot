@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/entity"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/store"
+	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/tg/markup"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5"
 	"time"
@@ -52,7 +53,7 @@ func (b *Bot) isStoreProcessing(ctx context.Context, update *tgbotapi.Update) (b
 			}
 		}
 
-		if _, err := b.tgMsg.SendEditMessage(userID, update.Message.MessageID, nil, "Выполнено успешно"); err != nil {
+		if err := b.updateChatInSuccessfullyCase(userID, data.MsgID, update.Message.MessageID, markup.ContestSetting, "И тут тоже поменять"); err != nil {
 			return true, err
 		}
 
@@ -60,54 +61,124 @@ func (b *Bot) isStoreProcessing(ctx context.Context, update *tgbotapi.Update) (b
 	case *store.QuestionStore:
 		b.log.Info("process store.QuestionStore")
 
-		if data.TypeCommandQuestion == store.QuestionCreate {
-			if err := b.questionsService.CreateQuestion(ctx, &entity.Question{
-				ContestID:     data.ContestID,
-				CreatedByUser: data.UserID,
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-				QuestionName:  update.Message.Text,
-			}); err != nil {
-				b.log.Error("questionsService.CreateQuestion: %v", err)
-				return true, err
-			}
-		}
-
-		if data.TypeCommandQuestion == store.QuestionUpdate {
-			if err := b.questionsService.UpdateQuestionName(ctx, data.QuestionID, update.Message.Text); err != nil {
-				b.log.Error("questionsService.UpdateQuestionName: %v", err)
-				return true, err
-			}
-		}
-
-		if data.TypeCommandQuestion == store.QuestionAddButtonAnswer {
-			if err := b.contentStoreAddAnswer(ctx, update, data.QuestionID); err != nil {
-				b.log.Error("contentStoreAddAnswer: %v", err)
-				return true, err
-			}
-		}
-
-		if data.TypeCommandQuestion == store.QuestionAddDeadline {
-			parsedTime, err := time.Parse(time.DateTime, update.Message.Text)
-			if err != nil {
-				return true, err
-			}
-
-			if err := b.questionsService.UpdateDeadlineByQuestionID(ctx, data.QuestionID, parsedTime); err != nil {
-				b.log.Error("questionsService.UpdateDeadlineByQuestionID: %v", err)
-				return true, err
-			}
-		}
-
-		if err := b.updateChatInSuccessfullyCase(userID, data.MsgID, update.Message.MessageID); err != nil {
+		if err := b.switchTypeCommandQuestion(ctx, data, update); err != nil {
+			b.log.Error("switchTypeCommandQuestion: failed to process store.QuestionStore: %v", err)
 			return true, err
 		}
+
+		//if err := b.updateChatInSuccessfullyCase(userID, data.MsgID, update.Message.MessageID); err != nil {
+		//	return true, err
+		//}
 
 		return true, nil
 	default:
 		b.log.Error("undefined type data in storeProcessing")
 		return true, nil
 	}
+}
+
+func (b *Bot) switchTypeCommandQuestion(ctx context.Context, data *store.QuestionStore, update *tgbotapi.Update) error {
+	switch data.TypeCommandQuestion {
+	case store.QuestionCreate:
+		if err := b.questionsService.CreateQuestion(ctx, &entity.Question{
+			ContestID:     data.ContestID,
+			CreatedByUser: data.UserID,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			QuestionName:  update.Message.Text,
+		}); err != nil {
+			b.log.Error("questionsService.CreateQuestion: %v", err)
+			return err
+		}
+
+		markupQuestion := markup.QuestionSetting(data.ContestID)
+		if err := b.updateChatInSuccessfullyCase(
+			update.FromChat().ID,
+			data.MsgID,
+			update.Message.MessageID,
+			markupQuestion,
+			"И тут тоже поменять",
+		); err != nil {
+			b.log.Error("updateChatInSuccessfullyCase: %v", err)
+			return err
+		}
+	case store.QuestionUpdate:
+		if err := b.questionsService.UpdateQuestionName(ctx, data.QuestionID, update.Message.Text); err != nil {
+			b.log.Error("questionsService.UpdateQuestionName: %v", err)
+			return err
+		}
+
+		contestID, err := b.answersService.GetContestIDByQuestionID(ctx, data.QuestionID)
+		if err != nil {
+			b.log.Error("answersService.GetContestIDByQuestionID: %v", err)
+			return err
+		}
+
+		questionMarkup := markup.QuestionByIDSetting(data.QuestionID, contestID)
+		if err := b.updateChatInSuccessfullyCase(
+			update.FromChat().ID,
+			data.MsgID,
+			update.Message.MessageID,
+			questionMarkup,
+			"И тут тоже поменять",
+		); err != nil {
+			b.log.Error("updateChatInSuccessfullyCase: %v", err)
+			return err
+		}
+	case store.QuestionAddButtonAnswer:
+		if err := b.contentStoreAddAnswer(ctx, update, data.QuestionID); err != nil {
+			b.log.Error("contentStoreAddAnswer: %v", err)
+			return err
+		}
+
+		contestID, err := b.answersService.GetContestIDByQuestionID(ctx, data.QuestionID)
+		if err != nil {
+			b.log.Error("answersService.GetContestIDByQuestionID: %v", err)
+			return err
+		}
+
+		questionMarkup := markup.QuestionByIDSetting(data.QuestionID, contestID)
+		if err := b.updateChatInSuccessfullyCase(
+			update.FromChat().ID,
+			data.MsgID,
+			update.Message.MessageID,
+			questionMarkup,
+			"И тут тоже поменять",
+		); err != nil {
+			b.log.Error("updateChatInSuccessfullyCase: %v", err)
+			return err
+		}
+	case store.QuestionAddDeadline:
+		parsedTime, err := time.Parse(time.DateTime, update.Message.Text)
+		if err != nil {
+			return err
+		}
+
+		if err := b.questionsService.UpdateDeadlineByQuestionID(ctx, data.QuestionID, parsedTime); err != nil {
+			b.log.Error("questionsService.UpdateDeadlineByQuestionID: %v", err)
+			return err
+		}
+
+		contestID, err := b.answersService.GetContestIDByQuestionID(ctx, data.QuestionID)
+		if err != nil {
+			b.log.Error("answersService.GetContestIDByQuestionID: %v", err)
+			return err
+		}
+
+		questionMarkup := markup.QuestionByIDSetting(data.QuestionID, contestID)
+		if err := b.updateChatInSuccessfullyCase(
+			update.FromChat().ID,
+			data.MsgID,
+			update.Message.MessageID,
+			questionMarkup,
+			"И тут тоже поменять",
+		); err != nil {
+			b.log.Error("updateChatInSuccessfullyCase: %v", err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (b *Bot) contentStoreAddAnswer(ctx context.Context, update *tgbotapi.Update, questionID int) error {
@@ -164,14 +235,14 @@ func (b *Bot) contentStoreCreate(ctx context.Context, update *tgbotapi.Update) e
 	return nil
 }
 
-func (b *Bot) updateChatInSuccessfullyCase(userID int64, telegramMessageID, userMessageID int) error {
+func (b *Bot) updateChatInSuccessfullyCase(userID int64, telegramMessageID, userMessageID int, markup tgbotapi.InlineKeyboardMarkup, text string) error {
 	if resp, err := b.bot.Request(tgbotapi.NewDeleteMessage(userID,
 		userMessageID)); nil != err || !resp.Ok {
 		b.log.Error("failed to delete message id %d (%s): %v", userMessageID, string(resp.Result), err)
 		return err
 	}
 
-	if _, err := b.tgMsg.SendEditMessage(userID, telegramMessageID, nil, "Выполнено успешно"); err != nil {
+	if _, err := b.tgMsg.SendEditMessage(userID, telegramMessageID, &markup, text); err != nil {
 		return err
 	}
 

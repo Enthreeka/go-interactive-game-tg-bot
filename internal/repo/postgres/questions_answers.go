@@ -9,8 +9,10 @@ import (
 
 type QuestionAnswerRepo interface {
 	LinkQuestionToAnswer(ctx context.Context, tx pgx.Tx, questionID, answerID, contestID int) error
+
 	GetQuestionsByContest(ctx context.Context, contestID int) ([]entity.Question, error)
 	GetAnswersByContest(ctx context.Context, contestID int) ([]entity.Answer, error)
+	GetAnswersByQuestion(ctx context.Context, questionID int) ([]entity.Answer, error)
 }
 
 type questionAnswerRepo struct {
@@ -65,6 +67,34 @@ func (qa *questionAnswerRepo) GetAnswersByContest(ctx context.Context, contestID
 	          WHERE qa.contest = $1`
 
 	rows, err := qa.Pool.Query(ctx, query, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var answers []entity.Answer
+	for rows.Next() {
+		var answer entity.Answer
+		err := rows.Scan(&answer.ID, &answer.Answer, &answer.CostOfResponse)
+		if err != nil {
+			return nil, err
+		}
+		answers = append(answers, answer)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return answers, nil
+}
+
+func (qa *questionAnswerRepo) GetAnswersByQuestion(ctx context.Context, questionID int) ([]entity.Answer, error) {
+	query := `SELECT a.id, a.answer, a.cost_of_response
+	          FROM answers a
+	          INNER JOIN questions_answers qa ON a.id = qa.answers_id
+	          WHERE qa.questions_id = $1`
+
+	rows, err := qa.Pool.Query(ctx, query, questionID)
 	if err != nil {
 		return nil, err
 	}

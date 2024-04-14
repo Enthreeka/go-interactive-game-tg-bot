@@ -19,6 +19,7 @@ type QuestionRepo interface {
 	UpdateQuestion(ctx context.Context, question *entity.Question) error
 	UpdateQuestionName(ctx context.Context, questionID int, name string) error
 	UpdateDeadlineByQuestionID(ctx context.Context, questionID int, deadline time.Time) error
+	UpdateIsSendByQuestionID(ctx context.Context, isSend bool, questionID int) error
 
 	DeleteQuestion(ctx context.Context, id int) error
 
@@ -37,7 +38,16 @@ func NewQuestionRepo(pg *postgres.Postgres) QuestionRepo {
 
 func (q *questionRepo) collectRow(row pgx.Row) (*entity.Question, error) {
 	var question entity.Question
-	err := row.Scan(&question.ID, &question.ContestID, &question.CreatedByUser, &question.CreatedAt, &question.UpdatedAt, &question.QuestionName, &question.FileID, &question.Deadline)
+	err := row.Scan(&question.ID,
+		&question.ContestID,
+		&question.CreatedByUser,
+		&question.CreatedAt,
+		&question.UpdatedAt,
+		&question.QuestionName,
+		&question.FileID,
+		&question.Deadline,
+		&question.IsSend,
+	)
 	if checkErr := pgxError.ErrorHandler(err); checkErr != nil {
 		return nil, checkErr
 	}
@@ -101,8 +111,9 @@ func (q *questionRepo) GetQuestionsCreatedByUser(ctx context.Context, userID int
 }
 
 func (q *questionRepo) GetQuestionsByContestID(ctx context.Context, contestID int) ([]entity.Question, error) {
-	query := `SELECT  q.id,q.contest_id,q.created_by_user,q.created_at,q.updated_at,q.question_name,q.file_id,q.deadline from questions q
-			join contest c on c.id = $1`
+	query := `SELECT  q.id,q.contest_id,q.created_by_user,q.created_at,q.updated_at,q.question_name,q.file_id,q.deadline,q.is_send from questions q
+				join contest c on c.id = q.contest_id
+				where c.id = $1`
 
 	rows, err := q.Pool.Query(ctx, query, contestID)
 	if err != nil {
@@ -121,6 +132,7 @@ func (q *questionRepo) GetQuestionsByContestID(ctx context.Context, contestID in
 			&question.QuestionName,
 			&question.FileID,
 			&question.Deadline,
+			&question.IsSend,
 		)
 		if err != nil {
 			return nil, err
@@ -153,8 +165,15 @@ func (q *questionRepo) GetContestIDByQuestionID(ctx context.Context, questionID 
 }
 
 func (q *questionRepo) UpdateDeadlineByQuestionID(ctx context.Context, questionID int, deadline time.Time) error {
-	query := `update questions set deadline = $1 where id = $1`
+	query := `update questions set deadline = $1 where id = $2`
 
 	_, err := q.Pool.Exec(ctx, query, deadline, questionID)
+	return err
+}
+
+func (q *questionRepo) UpdateIsSendByQuestionID(ctx context.Context, isSend bool, questionID int) error {
+	query := `update questions set is_send = $1 where id = $2`
+
+	_, err := q.Pool.Exec(ctx, query, isSend, questionID)
 	return err
 }

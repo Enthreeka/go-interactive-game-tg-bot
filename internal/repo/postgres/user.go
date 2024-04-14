@@ -10,12 +10,16 @@ import (
 
 type UserRepo interface {
 	CreateUser(ctx context.Context, user *entity.User) error
+
+	GetAllAdmin(ctx context.Context) ([]entity.User, error)
 	GetAllUsers(ctx context.Context) ([]entity.User, error)
 	GetUserByID(ctx context.Context, id int64) (*entity.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*entity.User, error)
+
 	UpdateRoleByUsername(ctx context.Context, role string, username string) error
+	UpdateBlockedBotStatus(ctx context.Context, userID int64, status bool) error
+
 	IsUserExistByUsernameTg(ctx context.Context, usernameTg string) (bool, error)
-	GetAllAdmin(ctx context.Context) ([]entity.User, error)
 	IsUserExistByUserID(ctx context.Context, userID int64) (bool, error)
 }
 
@@ -31,7 +35,7 @@ func NewUserRepo(pg *postgres.Postgres) UserRepo {
 
 func (u *userRepo) collectRow(row pgx.Row) (*entity.User, error) {
 	var user entity.User
-	err := row.Scan(&user.ID, &user.TGUsername, &user.CreatedAt, &user.Phone, &user.ChannelFrom, &user.UserRole)
+	err := row.Scan(&user.ID, &user.TGUsername, &user.CreatedAt, &user.Phone, &user.ChannelFrom, &user.UserRole, &user.BlockedBot)
 	if checkErr := pgxError.ErrorHandler(err); checkErr != nil {
 		return nil, checkErr
 	}
@@ -123,4 +127,11 @@ func (u *userRepo) IsUserExistByUserID(ctx context.Context, userID int64) (bool,
 	}
 
 	return isExist, err
+}
+
+func (u *userRepo) UpdateBlockedBotStatus(ctx context.Context, userID int64, status bool) error {
+	query := `update "user" set blocked_bot = $1 where id = $2`
+
+	_, err := u.Pool.Exec(ctx, query, status, userID)
+	return err
 }

@@ -63,7 +63,7 @@ func (b *Bot) initHandlers(log *logger.Logger) {
 
 	b.callbackGeneral = callback.NewCallbackGeneral(log, b.store, b.tgMsg)
 	b.callbackContest = callback.NewCallbackContest(b.contestService, b.store, log, b.tgMsg, b.excel)
-	b.callbackQuestion = callback.NewCallbackQuestion(b.questionsService, b.answersService, log, b.store, b.tgMsg)
+	b.callbackQuestion = callback.NewCallbackQuestion(b.questionsService, b.answersService, b.userService, log, b.store, b.tgMsg, b.psql)
 
 }
 
@@ -116,6 +116,9 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 	//--user
 	newBot.RegisterCommandView("start", b.viewGeneral.ViewFirstMessage())
 
+	//--user
+	newBot.RegisterCommandCallback("answer_get", b.callbackQuestion.CallbackAnswerGet())
+
 	//--admin
 	newBot.RegisterCommandCallback("cancel_command", middleware.AdminMiddleware(b.userService, b.callbackGeneral.CallbackCancelCommand()))
 	newBot.RegisterCommandCallback("main_menu", middleware.AdminMiddleware(b.userService, b.callbackGeneral.CallbackMainMenu()))
@@ -138,6 +141,8 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 	newBot.RegisterCommandCallback("answer_delete", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackAnswerDelete()))
 	newBot.RegisterCommandCallback("question_change_deadline", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionChangeDeadline()))
 	newBot.RegisterCommandCallback("get_all_question", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackGetAllQuestionByContestID()))
+	newBot.RegisterCommandCallback("question_admin_view", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionAdminView()))
+	newBot.RegisterCommandCallback("question_send_user", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionSendUser()))
 
 	if err := newBot.Run(ctx); err != nil {
 		log.Error("failed to run tgbot: %v", err)

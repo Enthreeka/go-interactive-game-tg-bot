@@ -3,15 +3,19 @@ package postgres
 import (
 	"context"
 	"errors"
+	pgxError "github.com/Entreeka/go-interactive-game-tg-bot/internal/boterror/pgx_error"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/entity"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/postgres"
 	"github.com/jackc/pgx/v5"
 )
 
 type UserResultRepo interface {
-	CreateUserResult(ctx context.Context, result *entity.UserResult) error
-	GetUserResultsByContest(ctx context.Context, userID, contestID int) (*entity.UserResult, error)
+	CreateUserResult(ctx context.Context, tx pgx.Tx, result *entity.UserResult) error
+	GetUserResultsByContest(ctx context.Context, userID int64, contestID int) (*entity.UserResult, error)
 	GetAllUserResultsByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
+	IsExistUserResultByUserID(ctx context.Context, userID int64, contestID int) (bool, error)
+
+	UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error
 }
 
 type userResultRepo struct {
@@ -24,14 +28,33 @@ func NewUserResultRepo(pg *postgres.Postgres) UserResultRepo {
 	}
 }
 
-func (ur *userResultRepo) CreateUserResult(ctx context.Context, result *entity.UserResult) error {
-	query := `INSERT INTO user_results (user_id, contest_id, total_points) VALUES ($1, $2, $3)`
+func (ur *userResultRepo) UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error {
+	query := `update user_results set total_points = $1 where user_id = $2 and contest_id = $3`
 
-	_, err := ur.Pool.Exec(ctx, query, result.UserID, result.ContestID, result.TotalPoints)
+	_, err := tx.Exec(ctx, query, totalPoint, userID, contestID)
 	return err
 }
 
-func (ur *userResultRepo) GetUserResultsByContest(ctx context.Context, userID, contestID int) (*entity.UserResult, error) {
+func (ur *userResultRepo) IsExistUserResultByUserID(ctx context.Context, userID int64, contestID int) (bool, error) {
+	query := `select exists (select id from user_results where user_id = $1 and contest_id = $2)`
+	var isExist bool
+
+	err := ur.Pool.QueryRow(ctx, query, userID, contestID).Scan(&isExist)
+	if checkErr := pgxError.ErrorHandler(err); checkErr != nil {
+		return isExist, checkErr
+	}
+
+	return isExist, err
+}
+
+func (ur *userResultRepo) CreateUserResult(ctx context.Context, tx pgx.Tx, result *entity.UserResult) error {
+	query := `INSERT INTO user_results (user_id, contest_id, total_points) VALUES ($1, $2, $3)`
+
+	_, err := tx.Exec(ctx, query, result.UserID, result.ContestID, result.TotalPoints)
+	return err
+}
+
+func (ur *userResultRepo) GetUserResultsByContest(ctx context.Context, userID int64, contestID int) (*entity.UserResult, error) {
 	query := `SELECT id, total_points FROM user_results WHERE user_id = $1 AND contest_id = $2`
 
 	row := ur.Pool.QueryRow(ctx, query, userID, contestID)

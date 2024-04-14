@@ -14,8 +14,11 @@ create table if not exists "user"(
     phone        varchar(20) null,
     channel_from varchar(150) null,
     user_role         role default 'user' not null,
+    blocked_bot bool default false,
     primary key (id)
 );
+
+
 
 -- todo create index for name
 create table if not exists contest(
@@ -35,11 +38,11 @@ create table if not exists questions(
     question_name varchar(500),
     file_id varchar(100),
     deadline timestamp,
+    is_send boolean default false,
     primary key (id),
     foreign key (contest_id)
         references contest (id) on delete cascade
 );
-
 
 create table if not exists answers(
     id int generated always as identity,
@@ -47,6 +50,11 @@ create table if not exists answers(
     cost_of_response int,
     primary key (id)
 );
+
+SELECT a.id, a.answer, a.cost_of_response, qa.questions_id, q.deadline FROM answers a
+    join public.questions_answers qa on a.id = qa.answers_id
+    join public.questions q on q.id = qa.questions_id
+WHERE a.id = $1
 
 create table if not exists questions_answers(
     questions_id int,
@@ -83,4 +91,5 @@ create table if not exists history_points(
     foreign key (questions_id)
         references questions (id) on delete cascade
 );
+
 

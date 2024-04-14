@@ -59,6 +59,8 @@ func QuestionSetting(contestID int) tgbotapi.InlineKeyboardMarkup {
 func QuestionByIDSetting(questionID int, contestID int) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отобразить вопрос как у пользователей", fmt.Sprintf("question_admin_view_%d", questionID))),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Изменить название", fmt.Sprintf("question_change_name_%d", questionID))),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Добавить ответ", fmt.Sprintf("question_add_answer_%d", questionID))),
@@ -66,6 +68,8 @@ func QuestionByIDSetting(questionID int, contestID int) tgbotapi.InlineKeyboardM
 			tgbotapi.NewInlineKeyboardButtonData("Удалить ответ", fmt.Sprintf("question_delete_answer_%d", questionID))),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Изменить дедлайн", fmt.Sprintf("question_change_deadline_%d", questionID))),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отправить пользователям", fmt.Sprintf("question_send_user_%d", questionID))),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", fmt.Sprintf("get_all_question_%d", contestID))),
 		tgbotapi.NewInlineKeyboardRow(button.MainMenuButton),

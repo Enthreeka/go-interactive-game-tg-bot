@@ -10,6 +10,8 @@ var (
 	ErrIsNotSuperAdmin  = NewError("User is not super admin", errors.New("not_super_admin"))
 	ErrNotFoundUser     = NewError("Not found user", errors.New("not_found"))
 	ErrDeleteSuperAdmin = NewError("Delete super admin in tg bot", errors.New("delete_super_admin"))
+
+	ErrEmptyAnswer = NewError("get empty answer form DB", errors.New("empty_answer"))
 )
 
 var (

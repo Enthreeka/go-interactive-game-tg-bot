@@ -8,7 +8,7 @@ import (
 )
 
 type HistoryPointsRepo interface {
-	AddHistoryPoints(ctx context.Context, userID, questionID, awardedPoints int) error
+	AddHistoryPoints(ctx context.Context, tx pgx.Tx, userID int64, questionID, awardedPoints int) error
 	GetHistoryPoints(ctx context.Context, userID, questionID int) (int, error)
 }
 
@@ -22,10 +22,10 @@ func NewHistoryPointsRepo(pg *postgres.Postgres) HistoryPointsRepo {
 	}
 }
 
-func (hp *historyPointsRepo) AddHistoryPoints(ctx context.Context, userID, questionID, awardedPoints int) error {
+func (hp *historyPointsRepo) AddHistoryPoints(ctx context.Context, tx pgx.Tx, userID int64, questionID, awardedPoints int) error {
 	query := `INSERT INTO history_points (user_id, questions_id, awarded_point) VALUES ($1, $2, $3)`
 
-	_, err := hp.Pool.Exec(ctx, query, userID, questionID, awardedPoints)
+	_, err := tx.Exec(ctx, query, userID, questionID, awardedPoints)
 	return err
 }
 

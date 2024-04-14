@@ -15,6 +15,7 @@ type Question struct {
 	QuestionName  string     `json:"question_name"`
 	Deadline      *time.Time `json:"deadline"`
 	FileID        *string    `json:"file_id"`
+	IsSend        bool       `json:"is_send"`
 }
 
 func GetQuestionID(data string) int {

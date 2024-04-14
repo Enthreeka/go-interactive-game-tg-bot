@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/Entreeka/go-interactive-game-tg-bot/internal/boterror"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/entity"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/repo/postgres"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/logger"
@@ -17,6 +18,8 @@ type QuestionsService interface {
 	GetQuestionByID(ctx context.Context, id int) (*entity.Question, error)
 	UpdateQuestionName(ctx context.Context, questionID int, name string) error
 	UpdateDeadlineByQuestionID(ctx context.Context, questionID int, deadline time.Time) error
+	GetAnswersByQuestion(ctx context.Context, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error)
+	UpdateIsSendByQuestionID(ctx context.Context, isSend bool, questionID int) error
 }
 
 type questionsService struct {
@@ -62,8 +65,15 @@ func (q *questionsService) createQuestionMarkup(channel []entity.Question, metho
 
 	buttonsPerRow := 1
 
+	var isSendStr string
 	for i, el := range channel {
-		btn := tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s", el.QuestionName),
+		if el.IsSend == true {
+			isSendStr = "Отправлено"
+		} else {
+			isSendStr = "Не отправлено"
+		}
+
+		btn := tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s - [%s]", el.QuestionName, isSendStr),
 			fmt.Sprintf("question_%s_%d", method, el.ID))
 
 		row = append(row, btn)
@@ -91,4 +101,50 @@ func (q *questionsService) UpdateQuestionName(ctx context.Context, questionID in
 
 func (q *questionsService) UpdateDeadlineByQuestionID(ctx context.Context, questionID int, deadline time.Time) error {
 	return q.questionRepo.UpdateDeadlineByQuestionID(ctx, questionID, deadline)
+}
+
+func (q *questionsService) GetAnswersByQuestion(ctx context.Context, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error) {
+	answers, err := q.questionAnswerRepo.GetAnswersByQuestion(ctx, questionID)
+	if err != nil {
+		q.log.Error("questionAnswerRepo.GetAnswersByQuestion: %v", err)
+		return nil, nil, err
+	}
+
+	if answers == nil || len(answers) == 0 {
+		return nil, nil, boterror.ErrEmptyAnswer
+	}
+
+	markup, err := q.createAnswerMarkup(answers, method)
+	if err != nil {
+		q.log.Error("createAnswerMarkup: %v", err)
+		return nil, nil, err
+	}
+
+	return answers, markup, nil
+}
+
+func (q *questionsService) createAnswerMarkup(answer []entity.Answer, method string) (*tgbotapi.InlineKeyboardMarkup, error) {
+	var rows [][]tgbotapi.InlineKeyboardButton
+	var row []tgbotapi.InlineKeyboardButton
+
+	buttonsPerRow := 1
+
+	for i, el := range answer {
+		btn := tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s", el.Answer),
+			fmt.Sprintf("answer_%s_%d", method, el.ID))
+
+		row = append(row, btn)
+
+		if (i+1)%buttonsPerRow == 0 || i == len(answer)-1 {
+			rows = append(rows, row)
+			row = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+
+	markup := tgbotapi.NewInlineKeyboardMarkup(rows...)
+
+	return &markup, nil
+}
+func (q *questionsService) UpdateIsSendByQuestionID(ctx context.Context, isSend bool, questionID int) error {
+	return q.questionRepo.UpdateIsSendByQuestionID(ctx, isSend, questionID)
 }

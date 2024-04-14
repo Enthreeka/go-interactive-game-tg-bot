@@ -3,6 +3,7 @@ package entity
 import (
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Answer struct {
@@ -11,8 +12,9 @@ type Answer struct {
 	CostOfResponse int    `json:"cost_of_response"`
 
 	// -- helps field, no in DB
-	QuestionID int `json:"question_id"`
-	ContestID  int `json:"contest_id"`
+	QuestionID int        `json:"question_id,questions_id"`
+	ContestID  int        `json:"contest_id,contest"`
+	Deadline   *time.Time `json:"deadline"`
 }
 
 func GetAnswerID(data string) int {

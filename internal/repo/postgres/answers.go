@@ -10,7 +10,7 @@ import (
 
 type AnswerRepo interface {
 	GetAllAnswers(ctx context.Context) ([]entity.Answer, error)
-	GetAnswerByID(ctx context.Context, id int) ([]entity.Answer, error)
+	GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error)
 
 	CreateAnswer(ctx context.Context, tx pgx.Tx, answer *entity.Answer) (int, error)
 
@@ -31,7 +31,7 @@ func NewAnswerRepo(pg *postgres.Postgres) AnswerRepo {
 
 func (a *answerRepo) collectRow(row pgx.Row) (*entity.Answer, error) {
 	var answer entity.Answer
-	err := row.Scan(&answer.ID, &answer.Answer, &answer.CostOfResponse)
+	err := row.Scan(&answer.ID, &answer.Answer, &answer.CostOfResponse, &answer.QuestionID, &answer.Deadline, &answer.ContestID)
 	if checkErr := pgxError.ErrorHandler(err); checkErr != nil {
 		return nil, checkErr
 	}
@@ -64,14 +64,15 @@ func (a *answerRepo) GetAllAnswers(ctx context.Context) ([]entity.Answer, error)
 	return a.collectRows(rows)
 }
 
-func (a *answerRepo) GetAnswerByID(ctx context.Context, id int) ([]entity.Answer, error) {
-	query := `SELECT * FROM answers WHERE id = $1`
+func (a *answerRepo) GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error) {
+	query := `SELECT a.id, a.answer, a.cost_of_response, qa.questions_id, q.deadline, qa.contest FROM answers a
+				join public.questions_answers qa on a.id = qa.answers_id
+				join public.questions q on q.id = qa.questions_id
+			WHERE a.id = $1
+`
 
-	row, err := a.Pool.Query(ctx, query, id)
-	if err != nil {
-		return nil, err
-	}
-	return a.collectRows(row)
+	row := a.Pool.QueryRow(ctx, query, id)
+	return a.collectRow(row)
 }
 
 func (a *answerRepo) UpdateAnswer(ctx context.Context, answer *entity.Answer) error {
