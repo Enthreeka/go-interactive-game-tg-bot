@@ -30,9 +30,6 @@ create table if not exists contest(
     primary key (id)
 );
 
-SELECT u.tg_username,user_results.user_id,user_results.id, user_results.total_points FROM user_results
-                                                                                              join "user" u on u.id = user_results.user_id
-WHERE user_results.contest_id = 6;
 
 create table if not exists questions(
     id int generated always as identity,
