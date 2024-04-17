@@ -37,6 +37,7 @@ type Bot struct {
 	callbackGeneral  *callback.CallbackGeneral
 	callbackContest  *callback.CallbackContest
 	callbackQuestion *callback.CallbackQuestion
+	callbackUser     *callback.CallbackUser
 }
 
 func NewBot() *Bot {
@@ -62,9 +63,9 @@ func (b *Bot) initHandlers(log *logger.Logger) {
 	b.viewGeneral = view.NewViewGeneral(log)
 
 	b.callbackGeneral = callback.NewCallbackGeneral(log, b.store, b.tgMsg)
-	b.callbackContest = callback.NewCallbackContest(b.contestService, b.store, log, b.tgMsg, b.excel)
-	b.callbackQuestion = callback.NewCallbackQuestion(b.questionsService, b.answersService, b.userService, log, b.store, b.tgMsg, b.psql)
-
+	b.callbackContest = callback.NewCallbackContest(b.contestService, b.userService, b.store, log, b.tgMsg, b.excel)
+	b.callbackQuestion = callback.NewCallbackQuestion(b.questionsService, b.answersService, b.userService, log, b.store, b.tgMsg, b.excel, b.psql)
+	b.callbackUser = callback.NewCallbackUser(b.userService, log, b.store, b.tgMsg)
 }
 
 func (b *Bot) initExcel(log *logger.Logger) {
@@ -123,6 +124,11 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 	newBot.RegisterCommandCallback("cancel_command", middleware.AdminMiddleware(b.userService, b.callbackGeneral.CallbackCancelCommand()))
 	newBot.RegisterCommandCallback("main_menu", middleware.AdminMiddleware(b.userService, b.callbackGeneral.CallbackMainMenu()))
 
+	newBot.RegisterCommandCallback("user_setting", middleware.AdminMiddleware(b.userService, b.callbackUser.AdminRoleSetting()))
+	newBot.RegisterCommandCallback("admin_look_up", middleware.AdminMiddleware(b.userService, b.callbackUser.AdminLookUp()))
+	newBot.RegisterCommandCallback("admin_delete_role", middleware.AdminMiddleware(b.userService, b.callbackUser.AdminDeleteRole()))
+	newBot.RegisterCommandCallback("admin_set_role", middleware.AdminMiddleware(b.userService, b.callbackUser.AdminSetRole()))
+
 	newBot.RegisterCommandCallback("contest_delete", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackContestDelete()))
 	newBot.RegisterCommandCallback("contest_setting", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackContestSetting()))
 	newBot.RegisterCommandCallback("get_all_contest", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackGetAllContest()))
@@ -130,6 +136,11 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 	newBot.RegisterCommandCallback("delete_contest", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackDeleteContest()))
 	newBot.RegisterCommandCallback("contest_get", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackGetContestByID()))
 	newBot.RegisterCommandCallback("download_rating", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackDownloadRating()))
+	newBot.RegisterCommandCallback("contest_reminder", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackContestReminder()))
+	newBot.RegisterCommandCallback("send_rating", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackSendRating()))
+	newBot.RegisterCommandCallback("pick_random", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackPickRandom()))
+	newBot.RegisterCommandCallback("send_message", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackSendMessage()))
+	newBot.RegisterCommandCallback("update_rating", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackUpdateRating()))
 
 	newBot.RegisterCommandCallback("question_setting", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionSetting()))
 	newBot.RegisterCommandCallback("create_question", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackCreateQuestion()))
@@ -143,6 +154,9 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 	newBot.RegisterCommandCallback("get_all_question", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackGetAllQuestionByContestID()))
 	newBot.RegisterCommandCallback("question_admin_view", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionAdminView()))
 	newBot.RegisterCommandCallback("question_send_user", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionSendUser()))
+	newBot.RegisterCommandCallback("close_rating", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackCloseRating()))
+	newBot.RegisterCommandCallback("question_delete", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionDelete()))
+	newBot.RegisterCommandCallback("top_10", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackGetTop10Users()))
 
 	if err := newBot.Run(ctx); err != nil {
 		log.Error("failed to run tgbot: %v", err)

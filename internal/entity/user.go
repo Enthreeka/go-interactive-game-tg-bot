@@ -14,13 +14,13 @@ const (
 )
 
 type User struct {
-	ID          int64     `json:"id"`
+	ID          int64     `json:"id,omitempty"`
 	TGUsername  string    `json:"tg_username"`
-	CreatedAt   time.Time `json:"created_at"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
 	Phone       string    `json:"phone,omitempty"`
 	ChannelFrom string    `json:"channel_from,omitempty"`
-	UserRole    UserRole  `json:"user_role"`
-	BlockedBot  bool      `json:"blocked_bot"`
+	UserRole    UserRole  `json:"user_role,omitempty"`
+	BlockedBot  bool      `json:"blocked_bot,omitempty"`
 }
 
 func (u User) String() string {

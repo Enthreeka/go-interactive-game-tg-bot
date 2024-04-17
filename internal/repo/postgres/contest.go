@@ -16,6 +16,7 @@ type ContestRepo interface {
 	CreateContest(ctx context.Context, contest *entity.Contest) error
 
 	UpdateContestDeadline(ctx context.Context, id int, deadline time.Time) error
+	UpdateIsCompletedByContestID(ctx context.Context, isCompleted bool, contestID int) error
 
 	DeleteContest(ctx context.Context, id int) error
 }
@@ -32,7 +33,7 @@ func NewContestRepo(pg *postgres.Postgres) ContestRepo {
 
 func (c *contestRepo) collectRow(row pgx.Row) (*entity.Contest, error) {
 	var contest entity.Contest
-	err := row.Scan(&contest.ID, &contest.Name, &contest.FileID, &contest.Deadline)
+	err := row.Scan(&contest.ID, &contest.Name, &contest.FileID, &contest.Deadline, &contest.IsCompleted)
 	if checkErr := pgxError.ErrorHandler(err); checkErr != nil {
 		return nil, checkErr
 	}
@@ -82,5 +83,12 @@ func (c *contestRepo) DeleteContest(ctx context.Context, id int) error {
 	query := `DELETE FROM contest WHERE id = $1`
 
 	_, err := c.Pool.Exec(ctx, query, id)
+	return err
+}
+
+func (c *contestRepo) UpdateIsCompletedByContestID(ctx context.Context, isCompleted bool, contestID int) error {
+	query := `UPDATE contest SET is_completed = $1 where id = $2`
+
+	_, err := c.Pool.Exec(ctx, query, isCompleted, contestID)
 	return err
 }

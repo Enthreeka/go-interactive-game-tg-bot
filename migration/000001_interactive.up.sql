@@ -26,8 +26,13 @@ create table if not exists contest(
     name varchar(200),
     file_id varchar(100),
     deadline timestamp,
+    is_completed boolean default false,
     primary key (id)
 );
+
+SELECT u.tg_username,user_results.user_id,user_results.id, user_results.total_points FROM user_results
+                                                                                              join "user" u on u.id = user_results.user_id
+WHERE user_results.contest_id = 6;
 
 create table if not exists questions(
     id int generated always as identity,
@@ -50,11 +55,6 @@ create table if not exists answers(
     cost_of_response int,
     primary key (id)
 );
-
-SELECT a.id, a.answer, a.cost_of_response, qa.questions_id, q.deadline FROM answers a
-    join public.questions_answers qa on a.id = qa.answers_id
-    join public.questions q on q.id = qa.questions_id
-WHERE a.id = $1
 
 create table if not exists questions_answers(
     questions_id int,

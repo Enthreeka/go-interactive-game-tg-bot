@@ -18,12 +18,22 @@ type UserService interface {
 	CreateUserResult(ctx context.Context, tx pgx.Tx, result *entity.UserResult) error
 	GetUserResultsByContest(ctx context.Context, userID int64, contestID int) (*entity.UserResult, error)
 	UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error
+	UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error
+	GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error)
+	UpdateRoleByUsername(ctx context.Context, role string, username string) error
+
+	GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
+	GetAllAdmin(ctx context.Context) ([]entity.User, error)
 }
 
 type userService struct {
 	userRepo       postgres.UserRepo
 	userResultRepo postgres.UserResultRepo
 	log            *logger.Logger
+}
+
+func (u *userService) GetAllAdmin(ctx context.Context) ([]entity.User, error) {
+	return u.userRepo.GetAllAdmin(ctx)
 }
 
 func NewUserService(userRepo postgres.UserRepo, userResultRepo postgres.UserResultRepo, log *logger.Logger) UserService {
@@ -78,4 +88,20 @@ func (u *userService) GetUserResultsByContest(ctx context.Context, userID int64,
 }
 func (u *userService) UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error {
 	return u.userResultRepo.UpdateTotalPointsByUserIDAndContestID(ctx, tx, userID, contestID, totalPoint)
+}
+
+func (u *userService) UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error {
+	return u.userResultRepo.UpdateTotalPointsByContestID(ctx, contestID, totalPoint)
+}
+
+func (u *userService) GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error) {
+	return u.userResultRepo.GetByTotalPointsAndContestID(ctx, totalPoint, contestID)
+}
+
+func (u *userService) UpdateRoleByUsername(ctx context.Context, role string, username string) error {
+	return u.userRepo.UpdateRoleByUsername(ctx, role, username)
+}
+
+func (u *userService) GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error) {
+	return u.userResultRepo.GetTop10UserByContest(ctx, contestID)
 }

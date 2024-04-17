@@ -14,11 +14,14 @@ import (
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/tg"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/tg/markup"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"strconv"
+	"strings"
 	"sync"
 )
 
 type CallbackContest struct {
 	contestService service.ContestService
+	userService    service.UserService
 	store          *store.Store
 	log            *logger.Logger
 	tgMsg          *tg.TelegramMsg
@@ -27,9 +30,10 @@ type CallbackContest struct {
 	mu sync.RWMutex
 }
 
-func NewCallbackContest(contestService service.ContestService, store *store.Store, log *logger.Logger, tgMsg *tg.TelegramMsg, excel *excel.Excel) *CallbackContest {
+func NewCallbackContest(contestService service.ContestService, userService service.UserService, store *store.Store, log *logger.Logger, tgMsg *tg.TelegramMsg, excel *excel.Excel) *CallbackContest {
 	return &CallbackContest{
 		contestService: contestService,
+		userService:    userService,
 		log:            log,
 		tgMsg:          tgMsg,
 		store:          store,
@@ -208,6 +212,229 @@ func (c *CallbackContest) CallbackContestDelete() tgbot.ViewFunc {
 		); err != nil {
 			return err
 		}
+
+		return nil
+	}
+}
+
+// CallbackContestReminder - contest_reminder_{contest_id}
+func (c *CallbackContest) CallbackContestReminder() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		contestID := entity.GetContestID(update.CallbackData())
+
+		contest, err := c.contestService.GetContestByID(ctx, contestID)
+		if err != nil {
+			c.log.Error("contestService.GetContestByID: %v", err)
+			handler.HandleError(bot, update, boterror.ParseErrToText(err))
+			return nil
+		}
+
+		users, err := c.userService.GetAllUsers(ctx)
+		if err != nil {
+			c.log.Error("userService.GetAllUsers: failed to get users: %v", err)
+			handler.HandleError(bot, update, boterror.ParseErrToText(err))
+			return nil
+		}
+
+		go func(u []entity.User, adminID int64) {
+			h, m, _ := contest.Deadline.Clock()
+
+			var minu string
+			if m > 9 {
+				minu = strconv.Itoa(m)
+			} else {
+				minu = strconv.Itoa(m)
+				minu = "0" + minu
+			}
+			text := fmt.Sprintf("Дорогие уастники! Напоминаем Вам, что у нас проходит конкурс: %s.\n"+
+				"Он завершится: %d числа в %d:%s.", contest.Name, contest.Deadline.Day(), h, minu)
+
+			var totalSend int
+
+			for _, user := range u {
+
+				if user.BlockedBot == false {
+					if err := c.tgMsg.SendNewMessage(user.ID, nil, text); err != nil {
+						c.log.Error("tgMsg.SendNewMessage in user question send: %v", err)
+
+						if strings.Contains(err.Error(), "Forbidden: bot was blocked by the user") ||
+							strings.Contains(err.Error(), "Bad Request: chat not found") {
+
+							if err := c.userService.UpdateBlockedBotStatus(context.Background(), user.ID, true); err != nil {
+								c.log.Error("userService.UpdateBlockedBotStatus: %v", err)
+							}
+
+						} else {
+							c.log.Error("error on sending: %v", err)
+						}
+					}
+					totalSend++
+				}
+
+			}
+
+			if err := c.tgMsg.SendNewMessage(
+				adminID,
+				nil,
+				fmt.Sprintf("Рассылка завершена. Отправлено пользователям: %d", totalSend),
+			); err != nil {
+				c.log.Error("questionsService.UpdateIsSendByQuestionID: %v", err)
+				return
+			}
+		}(users, update.FromChat().ID)
+
+		return nil
+	}
+}
+
+// CallbackSendRating - send_rating_{contest_id}
+// Отправляется только людям, которые участвовали в текущем контексте
+func (c *CallbackContest) CallbackSendRating() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		contestID := entity.GetContestID(update.CallbackData())
+
+		userResult, err := c.contestService.GetAllUserResultsByContest(ctx, contestID)
+		if err != nil {
+			c.log.Error("contestService.GetAllUserResultsByContest: failed to get contest: %v", err)
+			return err
+		}
+
+		c.mu.Lock()
+		fileName, err := c.excel.GenerateForUserResultsExcelFile(userResult, contestID, update.CallbackQuery.From.UserName)
+		if err != nil {
+			c.log.Error("Excel.GenerateExcelFile: failed to generate excel file: %v", err)
+			handler.HandleError(bot, update, boterror.ParseErrToText(err))
+			return nil
+		}
+
+		fileIDBytes, err := c.excel.GetExcelFile(fileName)
+		if err != nil {
+			c.log.Error("Excel.GetExcelFile: failed to get excel file: %v", err)
+			handler.HandleError(bot, update, boterror.ParseErrToText(err))
+			return nil
+		}
+		c.mu.Unlock()
+
+		go func(u []entity.UserResult, adminID int64) {
+			var totalSend int
+
+			for _, user := range u {
+
+				if _, err := c.tgMsg.SendDocument(user.UserID, fileName, fileIDBytes,
+					"Отправляем Вам таблицу с результатами пользователей за текущий конкурс"); err != nil {
+					c.log.Error("tgMsg.SendDocument to user table: %v", err)
+
+					if strings.Contains(err.Error(), "Forbidden: bot was blocked by the user") ||
+						strings.Contains(err.Error(), "Bad Request: chat not found") {
+
+						if err := c.userService.UpdateBlockedBotStatus(context.Background(), user.UserID, true); err != nil {
+							c.log.Error("userService.UpdateBlockedBotStatus: %v", err)
+						}
+
+					} else {
+						c.log.Error("error on sending: %v", err)
+					}
+				}
+				totalSend++
+			}
+
+			if err := c.tgMsg.SendNewMessage(
+				adminID,
+				nil,
+				fmt.Sprintf("Рассылка завершена. Отправлено пользователям: %d", totalSend),
+			); err != nil {
+				c.log.Error("questionsService.UpdateIsSendByQuestionID: %v", err)
+				return
+			}
+		}(userResult, update.FromChat().ID)
+
+		return nil
+	}
+}
+
+// CallbackPickRandom - pick_random_{contest_id}
+func (c *CallbackContest) CallbackPickRandom() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		contestID := entity.GetContestID(update.CallbackData())
+
+		msg, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
+			update.CallbackQuery.Message.MessageID,
+			&markup.CancelState,
+			`Отправьте сообщение в следующем формате:`+
+				"\n{\n"+
+				`"рейтинг": сюда нужно вписать целое число,`+"\n"+
+				`"количество_людей": сюда нужно вписать целое число`+
+				"\n}")
+		if err != nil {
+			return err
+		}
+
+		c.store.Delete(update.FromChat().ID)
+		c.store.Set(&store.ContestStore{
+			MsgID:              msg,
+			UserID:             update.FromChat().ID,
+			ContestID:          contestID,
+			TypeCommandContest: store.ContestPick,
+		}, update.FromChat().ID)
+
+		return nil
+	}
+}
+
+// CallbackSendMessage - send_message_{contest_id}
+// Диалоговое окно с пользваотелем
+func (c *CallbackContest) CallbackSendMessage() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		contestID := entity.GetContestID(update.CallbackData())
+
+		msg, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
+			update.CallbackQuery.Message.MessageID,
+			&markup.CancelState,
+			`Начните диалоговое окно с пользователем. Пользователь не сможет отправить вам ответ в бота. Отправьте сообщение в следующем формате:`+
+				"\n{\n"+
+				`"сообщение":"впишите сюда текст",`+"\n"+
+				`"id_пользователя": сюда нужно вписать целое число`+
+				"\n}")
+		if err != nil {
+			return err
+		}
+
+		c.store.Delete(update.FromChat().ID)
+		c.store.Set(&store.ContestStore{
+			MsgID:              msg,
+			UserID:             update.FromChat().ID,
+			ContestID:          contestID,
+			TypeCommandContest: store.ContestUser,
+		}, update.FromChat().ID)
+
+		return nil
+	}
+}
+
+// CallbackUpdateRating - update_rating_{contest_id}
+func (c *CallbackContest) CallbackUpdateRating() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		contestID := entity.GetContestID(update.CallbackData())
+
+		msg, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
+			update.CallbackQuery.Message.MessageID,
+			&markup.CancelState,
+			`Вы можете изменить рейтинг конкретному пользователю. Отправьте сообщение в следующем формате:`+
+				"\n{\n"+
+				`"рейтинг":сюда нужно вписать целое число,`+"\n"+
+				`"id_пользователя": сюда нужно вписать целое число`+
+				"\n}")
+		if err != nil {
+			return err
+		}
+
+		c.store.Delete(update.FromChat().ID)
+		c.store.Set(&store.ContestStore{
+			MsgID:              msg,
+			UserID:             update.FromChat().ID,
+			ContestID:          contestID,
+			TypeCommandContest: store.ContestRating,
+		}, update.FromChat().ID)
 
 		return nil
 	}

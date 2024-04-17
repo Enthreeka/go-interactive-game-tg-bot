@@ -13,6 +13,7 @@ type AnswerRepo interface {
 	GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error)
 
 	CreateAnswer(ctx context.Context, tx pgx.Tx, answer *entity.Answer) (int, error)
+	CreateAnswers(ctx context.Context, tx pgx.Tx, answers []entity.Answer) ([]int, error)
 
 	UpdateAnswer(ctx context.Context, answer *entity.Answer) error
 
@@ -44,6 +45,22 @@ func (a *answerRepo) collectRows(rows pgx.Rows) ([]entity.Answer, error) {
 		answer, err := a.collectRow(row)
 		return *answer, err
 	})
+}
+
+func (a *answerRepo) CreateAnswers(ctx context.Context, tx pgx.Tx, answers []entity.Answer) ([]int, error) {
+	query := `INSERT INTO answers (answer, cost_of_response) VALUES ($1, $2) RETURNING id`
+	var newID []int
+
+	for _, value := range answers {
+		var id int
+		err := tx.QueryRow(ctx, query, value.Answer, value.CostOfResponse).Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		newID = append(newID, id)
+	}
+
+	return newID, nil
 }
 
 func (a *answerRepo) CreateAnswer(ctx context.Context, tx pgx.Tx, answer *entity.Answer) (int, error) {

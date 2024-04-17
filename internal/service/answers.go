@@ -9,6 +9,7 @@ import (
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/tg/button"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5"
+	"time"
 )
 
 type AnswersService interface {
@@ -18,6 +19,7 @@ type AnswersService interface {
 	GetContestIDByQuestionID(ctx context.Context, questionID int) (int, error)
 	GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error)
 	AddHistoryPoints(ctx context.Context, tx pgx.Tx, userID int64, questionID, awardedPoints int) error
+	CreateAdditionalQuestionWithAnswer(ctx context.Context, tx pgx.Tx, args entity.ArgsTop10) (int, *tgbotapi.InlineKeyboardMarkup, error)
 }
 
 type answersService struct {
@@ -40,6 +42,51 @@ func NewAnswersService(answerRepo postgres.AnswerRepo,
 		historyPointsRepo:  historyPointsRepo,
 		log:                log,
 	}
+}
+
+func (a *answersService) CreateAdditionalQuestionWithAnswer(ctx context.Context, tx pgx.Tx, args entity.ArgsTop10) (int, *tgbotapi.InlineKeyboardMarkup, error) {
+	a.log.Info("Create new additional data: %v", args)
+
+	questionID, err := a.questionRepo.CreateQuestion(ctx, tx, &entity.Question{
+		ContestID:     args.ContestID,
+		CreatedByUser: args.AdminID,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+		QuestionName:  args.Question,
+		FileID:        nil,
+	})
+	if err != nil {
+		a.log.Error("CreateAdditionalQuestionWithAnswer: questionRepo.CreateQuestion: %v", err)
+		return 0, nil, err
+	}
+	var ans []entity.Answer
+	for _, value := range args.Answers {
+		var a entity.Answer
+		a.Answer = value.Answer
+		a.CostOfResponse = value.Cost
+		ans = append(ans, a)
+	}
+
+	createdID, err := a.answerRepo.CreateAnswers(ctx, tx, ans)
+	if err != nil {
+		a.log.Error("CreateAdditionalQuestionWithAnswer: answerRepo.CreateAnswers: %v", err)
+		return 0, nil, err
+	}
+
+	for _, answerID := range createdID {
+		if err := a.questionAnswerRepo.LinkQuestionToAnswer(ctx, tx, questionID, answerID, args.ContestID); err != nil {
+			a.log.Error("questionAnswerRepo.LinkQuestionToAnswer: %v", err)
+			return 0, nil, err
+		}
+	}
+
+	_, markup, err := a.GetAnswersByID(ctx, questionID, "get")
+	if err != nil {
+		a.log.Error("GetAnswersByID in CreateAdditionalQuestionWithAnswer: %v", err)
+		return 0, nil, err
+	}
+
+	return questionID, markup, nil
 }
 
 func (a *answersService) CreateAnswer(ctx context.Context, tx pgx.Tx, answer *entity.Answer) error {

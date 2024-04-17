@@ -16,6 +16,7 @@ type ContestService interface {
 	GetContestByID(ctx context.Context, id int) (*entity.Contest, error)
 	GetAllUserResultsByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
 	DeleteContest(ctx context.Context, id int) error
+	UpdateIsCompletedByContestID(ctx context.Context, isCompleted bool, contestID int) error
 }
 
 type contestService struct {
@@ -87,4 +88,8 @@ func (c *contestService) GetAllUserResultsByContest(ctx context.Context, contest
 
 func (c *contestService) DeleteContest(ctx context.Context, id int) error {
 	return c.contestRepo.DeleteContest(ctx, id)
+}
+
+func (c *contestService) UpdateIsCompletedByContestID(ctx context.Context, isCompleted bool, contestID int) error {
+	return c.contestRepo.UpdateIsCompletedByContestID(ctx, isCompleted, contestID)
 }

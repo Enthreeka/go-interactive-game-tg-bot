@@ -180,6 +180,90 @@ func (b *Bot) CallbackStrings(callbackData string) (error, ViewFunc) {
 		}
 		return nil, callbackView
 
+	case strings.HasPrefix(callbackData, "contest_reminder_"):
+		callbackView, ok := b.callbackView["contest_reminder"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "close_rating_"):
+		callbackView, ok := b.callbackView["close_rating"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "send_rating_"):
+		callbackView, ok := b.callbackView["send_rating"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "pick_random_"):
+		callbackView, ok := b.callbackView["pick_random"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "send_message_"):
+		callbackView, ok := b.callbackView["send_message"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "user_setting"):
+		callbackView, ok := b.callbackView["user_setting"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "admin_look_up"):
+		callbackView, ok := b.callbackView["admin_look_up"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "admin_delete_role"):
+		callbackView, ok := b.callbackView["admin_delete_role"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "admin_set_role"):
+		callbackView, ok := b.callbackView["admin_set_role"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "update_rating_"):
+		callbackView, ok := b.callbackView["update_rating"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "question_delete_"):
+		callbackView, ok := b.callbackView["question_delete"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
+	case strings.HasPrefix(callbackData, "top_10_"):
+		callbackView, ok := b.callbackView["top_10"]
+		if !ok {
+			return ErrNotFound, nil
+		}
+		return nil, callbackView
+
 	default:
 		return nil, nil
 	}

@@ -81,6 +81,18 @@ func ContestByIDSetting(contestID int) tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Управление вопросами конкурса", fmt.Sprintf("question_setting_%d", contestID))),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Получить топ 10 пользователей", fmt.Sprintf("top_10_%d", contestID))),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отправить пользователю сообщение", fmt.Sprintf("send_message_%d", contestID))),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Сделать выборку среди участников c определенным рейтингом", fmt.Sprintf("pick_random_%d", contestID))),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Отправить таблицу с рейтингом каждому участнику", fmt.Sprintf("send_rating_%d", contestID))),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Обнулить рейтинг", fmt.Sprintf("close_rating_%d", contestID))),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Напомнить пользователям о конкурсе", fmt.Sprintf("contest_reminder_%d", contestID))),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Скачать рейтинг", fmt.Sprintf("download_rating_%d", contestID))),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Изменить рейтинг (не готово)", fmt.Sprintf("update_rating_%d", contestID))),

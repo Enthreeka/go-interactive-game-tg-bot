@@ -2,6 +2,7 @@ package callback
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/boterror"
@@ -9,6 +10,7 @@ import (
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/handler"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/handler/tgbot"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/service"
+	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/excel"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/logger"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/postgres"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/store"
@@ -20,6 +22,10 @@ import (
 	"time"
 )
 
+/* TODO
+5. Если среди топ 10 участников есть  кто-то с одинаковым рейтингом, то нужно задавать дополнительные вопросы до момента, пока не будет ровно топ 10 человек
+*/
+
 type CallbackQuestion struct {
 	questionsService service.QuestionsService
 	answersService   service.AnswersService
@@ -27,6 +33,7 @@ type CallbackQuestion struct {
 	log              *logger.Logger
 	store            *store.Store
 	tgMsg            *tg.TelegramMsg
+	excel            *excel.Excel
 	pg               *postgres.Postgres
 }
 
@@ -37,6 +44,7 @@ func NewCallbackQuestion(
 	log *logger.Logger,
 	store *store.Store,
 	tgMsg *tg.TelegramMsg,
+	excel *excel.Excel,
 	pg *postgres.Postgres,
 ) *CallbackQuestion {
 	return &CallbackQuestion{
@@ -46,6 +54,7 @@ func NewCallbackQuestion(
 		log:              log,
 		store:            store,
 		tgMsg:            tgMsg,
+		excel:            excel,
 		pg:               pg,
 	}
 }
@@ -235,6 +244,28 @@ func (c *CallbackQuestion) CallbackQuestionDeleteAnswer() tgbot.ViewFunc {
 	}
 }
 
+// CallbackQuestionDelete - question_delete_{question_id}
+func (c *CallbackQuestion) CallbackQuestionDelete() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		questionID := entity.GetContestID(update.CallbackData())
+
+		if err := c.questionsService.DeleteQuestion(ctx, questionID); err != nil {
+			c.log.Error("questionsService.DeleteQuestion: failed to delete question: %v", err)
+			handler.HandleError(bot, update, boterror.ParseErrToText(err))
+			return nil
+		}
+
+		if _, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
+			update.CallbackQuery.Message.MessageID,
+			nil,
+			"Вопрос успешно удален"); err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
 // CallbackAnswerDelete - answer_delete_{answer_id}
 func (c *CallbackQuestion) CallbackAnswerDelete() tgbot.ViewFunc {
 	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
@@ -305,7 +336,8 @@ func (c *CallbackQuestion) CallbackQuestionAdminView() tgbot.ViewFunc {
 			return nil
 		}
 
-		if err := c.tgMsg.SendNewMessage(update.FromChat().ID, markupAnswer, question.QuestionName); err != nil {
+		text := fmt.Sprintf("!При нажатии на ответ вы также попадете в рейтинг вместе со всеми пользователями!\n\n%s", question.QuestionName)
+		if err := c.tgMsg.SendNewMessage(update.FromChat().ID, markupAnswer, text); err != nil {
 			return err
 		}
 
@@ -473,6 +505,103 @@ func (c *CallbackQuestion) CallbackAnswerGet() tgbot.ViewFunc {
 			fmt.Sprintf("Спасибо за ответ! Вы заработали: %d балла. %s", awardedPoints, timeIsUp),
 		); err != nil {
 			return nil
+		}
+
+		return nil
+	}
+}
+
+// CallbackCloseRating - close_rating_{contest_id}
+// Set Null to all user in current contest
+func (c *CallbackQuestion) CallbackCloseRating() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		contestID := entity.GetContestID(update.CallbackData())
+
+		if err := c.userService.UpdateTotalPointsByContestID(ctx, contestID, 0); err != nil {
+			c.log.Error("userService.UpdateTotalPointsByContestID: failed set Null to all user in current contest: %v", err)
+			return nil
+		}
+
+		if err := c.tgMsg.SendNewMessage(update.FromChat().ID,
+			nil,
+			"Рейтинг у каждого пользователя в текущем конкурсе успешно обнулился"); err != nil {
+			return nil
+		}
+
+		return nil
+	}
+}
+
+// CallbackGetTop10Users - top_10_{contest_id}
+func (c *CallbackQuestion) CallbackGetTop10Users() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		var (
+			contestID = entity.GetContestID(update.CallbackData())
+			m         = make(map[int]struct{})
+			isClear   = true
+		)
+		userResult, err := c.userService.GetTop10UserByContest(ctx, contestID)
+		if err != nil {
+			c.log.Error("userService.GetTop10UserByContest: failed to get 10 users: %v", err)
+			return nil
+		}
+
+		for _, value := range userResult {
+			if _, exist := m[value.TotalPoints]; exist {
+				isClear = false
+				break
+			} else {
+				m[value.TotalPoints] = struct{}{}
+			}
+		}
+
+		userResultByte, err := json.MarshalIndent(userResult, "", "\t")
+		if err != nil {
+			c.log.Error("json.MarshalIndent: CallbackGetTop10Users: %v", err)
+			return nil
+		}
+
+		text := `Были обнаружены люди с одинаковыми баллами. Составьте вопросы пользователям в формате JSON. Где указаны [] скобки можно вписать любое количество ответов/пользователей.
+				{
+				  "вопрос": "сюда вписать вопрос",
+				  "варианты_ответы": [
+					{
+					  "ответ": "сюда вписать ответ",
+					  "цена_ответа": вписать целое число
+					},
+					{
+					  "ответ": "сюда вписать ответ",
+					  "цена_ответа": вписать целое число
+					},
+					{
+					  "ответ": "сюда вписать ответ",
+					  "цена_ответа": вписать целое число
+					}
+				  ],
+				   "пользователи": [вписать целое число,вписать целое число]
+				}`
+
+		if err := c.tgMsg.SendNewMessage(update.FromChat().ID, nil, string(userResultByte)); err != nil {
+			c.log.Error("tgMsg.SendNewMessage: CallbackGetTop10Users: %v", err)
+			return nil
+		}
+
+		if !isClear {
+			if err := c.tgMsg.SendNewMessage(update.FromChat().ID, &markup.CancelState, text); err != nil {
+				c.log.Error("tgMsg.SendNewMessage: CallbackGetTop10Users: %v", err)
+				return nil
+			}
+			c.store.Delete(update.FromChat().ID)
+			c.store.Set(&store.QuestionStore{
+				UserID:              update.FromChat().ID,
+				ContestID:           contestID,
+				TypeCommandQuestion: store.QuestionTop10,
+			}, update.FromChat().ID)
+		} else {
+			if err := c.tgMsg.SendNewMessage(update.FromChat().ID, &markup.CancelState, "Не обнаружено участников с одинаковым рейтингом"); err != nil {
+				c.log.Error("tgMsg.SendNewMessage: CallbackGetTop10Users: %v", err)
+				return nil
+			}
 		}
 
 		return nil

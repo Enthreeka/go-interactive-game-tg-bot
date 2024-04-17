@@ -2,6 +2,7 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/internal/repo/postgres/answers.go" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/internal/repo/postgres/contest.go" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/internal/repo/postgres/questions.go" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/internal/repo/postgres/questions_answers.go" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/internal/repo/postgres/user_results.go" dialect="PostgreSQL" />

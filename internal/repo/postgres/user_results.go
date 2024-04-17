@@ -16,6 +16,9 @@ type UserResultRepo interface {
 	IsExistUserResultByUserID(ctx context.Context, userID int64, contestID int) (bool, error)
 
 	UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error
+	UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error
+	GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error)
+	GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
 }
 
 type userResultRepo struct {
@@ -74,6 +77,69 @@ func (ur *userResultRepo) GetAllUserResultsByContest(ctx context.Context, contes
 	query := `SELECT u.tg_username,user_results.user_id,user_results.id, user_results.total_points FROM user_results
                         join "user" u on u.id = user_results.user_id
                         WHERE user_results.contest_id = $1`
+
+	rows, err := ur.Pool.Query(ctx, query, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []entity.UserResult
+	for rows.Next() {
+		var result entity.UserResult
+		err := rows.Scan(&result.User.TGUsername, &result.UserID, &result.ID, &result.TotalPoints)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (ur *userResultRepo) UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error {
+	query := `update user_results set total_points = $1 where contest_id = $2`
+
+	_, err := ur.Pool.Exec(ctx, query, totalPoint, totalPoint, contestID)
+	return err
+}
+
+func (ur *userResultRepo) GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error) {
+	query := `SELECT u.tg_username,user_results.user_id,user_results.id, user_results.total_points,u.created_at FROM user_results
+                        join "user" u on u.id = user_results.user_id
+                        WHERE user_results.contest_id = $1 AND user_results.total_points = $2`
+
+	rows, err := ur.Pool.Query(ctx, query, contestID, totalPoint)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []entity.UserResult
+	for rows.Next() {
+		var result entity.UserResult
+		err := rows.Scan(&result.User.TGUsername, &result.UserID, &result.ID, &result.TotalPoints, &result.User.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (ur *userResultRepo) GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error) {
+	query := `SELECT u.tg_username,user_results.user_id,user_results.id, user_results.total_points FROM user_results
+    join "user" u on u.id = user_results.user_id
+    WHERE user_results.contest_id = $1
+    ORDER BY u.tg_username,user_results.user_id,user_results.id, user_results.total_points ASC
+    LIMIT 10;`
 
 	rows, err := ur.Pool.Query(ctx, query, contestID)
 	if err != nil {

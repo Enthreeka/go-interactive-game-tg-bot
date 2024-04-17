@@ -20,6 +20,7 @@ type QuestionsService interface {
 	UpdateDeadlineByQuestionID(ctx context.Context, questionID int, deadline time.Time) error
 	GetAnswersByQuestion(ctx context.Context, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error)
 	UpdateIsSendByQuestionID(ctx context.Context, isSend bool, questionID int) error
+	DeleteQuestion(ctx context.Context, id int) error
 }
 
 type questionsService struct {
@@ -40,7 +41,9 @@ func NewQuestionsService(questionRepo postgres.QuestionRepo, questionAnswerRepo 
 
 func (q *questionsService) CreateQuestion(ctx context.Context, question *entity.Question) error {
 	q.log.Info("Create question: %#v", question)
-	return q.questionRepo.CreateQuestion(ctx, question)
+
+	_, err := q.questionRepo.CreateQuestion(ctx, nil, question)
+	return err
 }
 
 func (q *questionsService) GetQuestionsByContestID(ctx context.Context, contestID int, method string) ([]entity.Question, *tgbotapi.InlineKeyboardMarkup, error) {
@@ -145,6 +148,11 @@ func (q *questionsService) createAnswerMarkup(answer []entity.Answer, method str
 
 	return &markup, nil
 }
+
 func (q *questionsService) UpdateIsSendByQuestionID(ctx context.Context, isSend bool, questionID int) error {
 	return q.questionRepo.UpdateIsSendByQuestionID(ctx, isSend, questionID)
+}
+
+func (q *questionsService) DeleteQuestion(ctx context.Context, id int) error {
+	return q.questionRepo.DeleteQuestion(ctx, id)
 }

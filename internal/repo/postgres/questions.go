@@ -23,7 +23,7 @@ type QuestionRepo interface {
 
 	DeleteQuestion(ctx context.Context, id int) error
 
-	CreateQuestion(ctx context.Context, question *entity.Question) error
+	CreateQuestion(ctx context.Context, tx pgx.Tx, question *entity.Question) (int, error)
 }
 
 type questionRepo struct {
@@ -62,11 +62,18 @@ func (q *questionRepo) collectRows(rows pgx.Rows) ([]entity.Question, error) {
 	})
 }
 
-func (q *questionRepo) CreateQuestion(ctx context.Context, question *entity.Question) error {
-	query := `INSERT INTO questions (created_by_user, created_at, updated_at, question_name, file_id,contest_id) VALUES ($1, $2, $3, $4, $5, $6)`
+func (q *questionRepo) CreateQuestion(ctx context.Context, tx pgx.Tx, question *entity.Question) (int, error) {
+	query := `INSERT INTO questions (created_by_user, created_at, updated_at, question_name, file_id,contest_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 
-	_, err := q.Pool.Exec(ctx, query, question.CreatedByUser, question.CreatedAt, question.UpdatedAt, question.QuestionName, question.FileID, question.ContestID)
-	return err
+	var err error
+	var id int
+	if tx == nil {
+		err = q.Pool.QueryRow(ctx, query, question.CreatedByUser, question.CreatedAt, question.UpdatedAt, question.QuestionName, question.FileID, question.ContestID).Scan(&id)
+	} else {
+		err = tx.QueryRow(ctx, query, question.CreatedByUser, question.CreatedAt, question.UpdatedAt, question.QuestionName, question.FileID, question.ContestID).Scan(&id)
+	}
+
+	return id, err
 }
 
 func (q *questionRepo) GetAllQuestions(ctx context.Context) ([]entity.Question, error) {

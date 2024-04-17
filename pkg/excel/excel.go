@@ -34,7 +34,7 @@ func (e *Excel) GenerateUserResultsExcelFile(results []entity.UserResult, contes
 		}
 	}()
 
-	sheetName := "UserResults"
+	sheetName := "Sheet1"
 	f.NewSheet(sheetName)
 
 	headers := map[string]string{
@@ -54,6 +54,47 @@ func (e *Excel) GenerateUserResultsExcelFile(results []entity.UserResult, contes
 		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), result.UserID)
 		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), result.ID)
 		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), result.TotalPoints)
+	}
+
+	filename := fmt.Sprintf("contest_%d_results.xlsx", contestID)
+	err := f.SaveAs(filename)
+	if err != nil {
+		e.log.Error("failed to save file: %s", filename)
+		return "", err
+	}
+
+	end := time.Since(start)
+	e.log.Info("[%s] by [%s] Время генерации файла: %f", filename, username, end.Seconds())
+	return filename, nil
+}
+
+func (e *Excel) GenerateForUserResultsExcelFile(results []entity.UserResult, contestID int, username string) (string, error) {
+	start := time.Now()
+
+	f := excelize.NewFile()
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			e.log.Error("failed to close excel: %v", err)
+		}
+	}()
+
+	sheetName := "Sheet1"
+	f.NewSheet(sheetName)
+
+	headers := map[string]string{
+		"A1": "TG Username",
+		"B1": "Total Points",
+	}
+
+	for cell, value := range headers {
+		f.SetCellValue(sheetName, cell, value)
+	}
+
+	for i, result := range results {
+		row := i + 2
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), result.User.TGUsername)
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), result.TotalPoints)
 	}
 
 	filename := fmt.Sprintf("contest_%d_results.xlsx", contestID)
