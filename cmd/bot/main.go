@@ -17,6 +17,6 @@ func main() {
 	newBot := bot.NewBot()
 
 	if err := newBot.Run(log, cfg); err != nil {
-		log.Fatal("failed to run telegram bot: %v", err)
+		log.Fatal("failed to run Telegram bot: %v", err)
 	}
 }
