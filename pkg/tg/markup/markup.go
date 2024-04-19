@@ -95,7 +95,7 @@ func ContestByIDSetting(contestID int) tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Скачать рейтинг", fmt.Sprintf("download_rating_%d", contestID))),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Изменить рейтинг (не готово)", fmt.Sprintf("update_rating_%d", contestID))),
+			tgbotapi.NewInlineKeyboardButtonData("Изменить рейтинг", fmt.Sprintf("update_rating_%d", contestID))),
 		tgbotapi.NewInlineKeyboardRow(button.BackToGetAllContest),
 		tgbotapi.NewInlineKeyboardRow(button.MainMenuButton),
 	)
