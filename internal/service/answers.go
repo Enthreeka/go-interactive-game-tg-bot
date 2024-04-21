@@ -20,6 +20,8 @@ type AnswersService interface {
 	GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error)
 	AddHistoryPoints(ctx context.Context, tx pgx.Tx, userID int64, questionID, awardedPoints int) error
 	CreateAdditionalQuestionWithAnswer(ctx context.Context, tx pgx.Tx, args entity.ArgsTop10) (int, *tgbotapi.InlineKeyboardMarkup, error)
+
+	Declension(number int) string
 }
 
 type answersService struct {
@@ -41,6 +43,17 @@ func NewAnswersService(answerRepo postgres.AnswerRepo,
 		questionAnswerRepo: questionAnswerRepo,
 		historyPointsRepo:  historyPointsRepo,
 		log:                log,
+	}
+}
+
+func (a *answersService) Declension(number int) string {
+	switch {
+	case number%10 == 1 && number%100 != 11:
+		return "балл"
+	case number%10 >= 2 && number%10 <= 4 && (number%100 < 10 || number%100 >= 20):
+		return "балла"
+	default:
+		return "баллов"
 	}
 }
 

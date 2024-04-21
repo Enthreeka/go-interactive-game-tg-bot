@@ -103,7 +103,7 @@ func (ur *userResultRepo) GetAllUserResultsByContest(ctx context.Context, contes
 func (ur *userResultRepo) UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error {
 	query := `update user_results set total_points = $1 where contest_id = $2`
 
-	_, err := ur.Pool.Exec(ctx, query, totalPoint, totalPoint, contestID)
+	_, err := ur.Pool.Exec(ctx, query, totalPoint, contestID)
 	return err
 }
 

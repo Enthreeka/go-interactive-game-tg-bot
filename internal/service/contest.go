@@ -50,6 +50,7 @@ func (c *contestService) GetAllContestsButtons(ctx context.Context, method strin
 }
 
 func (c *contestService) CreateContest(ctx context.Context, contest *entity.Contest) error {
+	c.log.Info("Create contest: %v", contest)
 	return c.contestRepo.CreateContest(ctx, contest)
 }
 
@@ -87,6 +88,7 @@ func (c *contestService) GetAllUserResultsByContest(ctx context.Context, contest
 }
 
 func (c *contestService) DeleteContest(ctx context.Context, id int) error {
+	c.log.Info("Delete contest: %d", id)
 	return c.contestRepo.DeleteContest(ctx, id)
 }
 

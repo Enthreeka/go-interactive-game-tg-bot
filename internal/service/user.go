@@ -91,6 +91,7 @@ func (u *userService) UpdateTotalPointsByUserIDAndContestID(ctx context.Context,
 }
 
 func (u *userService) UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error {
+	u.log.Info("UpdateTotalPointsByContestID: contestID = %d, totalPoint = %d", contestID, totalPoint)
 	return u.userResultRepo.UpdateTotalPointsByContestID(ctx, contestID, totalPoint)
 }
 

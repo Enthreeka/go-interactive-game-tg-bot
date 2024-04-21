@@ -502,7 +502,7 @@ func (c *CallbackQuestion) CallbackAnswerGet() tgbot.ViewFunc {
 			userID,
 			update.CallbackQuery.Message.MessageID,
 			nil,
-			fmt.Sprintf("Спасибо за ответ! Вы заработали: %d балла. %s", awardedPoints, timeIsUp),
+			fmt.Sprintf("Спасибо за ответ! Вы заработали: %d %s. %s", awardedPoints, c.answersService.Declension(awardedPoints), timeIsUp),
 		); err != nil {
 			return nil
 		}

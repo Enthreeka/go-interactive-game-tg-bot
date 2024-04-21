@@ -99,6 +99,7 @@ func (q *questionsService) GetQuestionByID(ctx context.Context, id int) (*entity
 }
 
 func (q *questionsService) UpdateQuestionName(ctx context.Context, questionID int, name string) error {
+	q.log.Info("Update question: questionID = %d,name = %s", questionID, name)
 	return q.questionRepo.UpdateQuestionName(ctx, questionID, name)
 }
 
@@ -154,5 +155,6 @@ func (q *questionsService) UpdateIsSendByQuestionID(ctx context.Context, isSend 
 }
 
 func (q *questionsService) DeleteQuestion(ctx context.Context, id int) error {
+	q.log.Info("Update question: id = %d", id)
 	return q.questionRepo.DeleteQuestion(ctx, id)
 }

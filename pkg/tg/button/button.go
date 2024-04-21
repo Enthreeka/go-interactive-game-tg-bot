@@ -16,7 +16,3 @@ var (
 func BackToQuestionSetting(contestID int) tgbotapi.InlineKeyboardButton {
 	return tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", fmt.Sprintf("question_setting_%d", contestID))
 }
-
-//func BackToGetAllQuestion(contestID int) tgbotapi.InlineKeyboardButton {
-//	return tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", fmt.Sprintf("get_all_question_%d", contestID))
-//}
