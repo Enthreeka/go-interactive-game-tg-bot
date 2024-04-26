@@ -81,6 +81,8 @@ func ContestByIDSetting(contestID int) tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Управление вопросами конкурса", fmt.Sprintf("question_setting_%d", contestID))),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Создать рассылку", "create_mailing")),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Получить топ 10 пользователей", fmt.Sprintf("top_10_%d", contestID))),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Отправить пользователю сообщение", fmt.Sprintf("send_message_%d", contestID))),

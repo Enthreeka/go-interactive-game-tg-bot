@@ -38,3 +38,7 @@ type ArgsRating struct {
 	Rating int   `json:"рейтинг"`
 	UserID int64 `json:"id_пользователя"`
 }
+
+type ArgsMailing struct {
+	Message string `json:"сообщение"`
+}

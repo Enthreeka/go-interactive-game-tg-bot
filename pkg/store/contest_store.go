@@ -8,6 +8,8 @@ var (
 	ContestPick   TypeCommandContest = "pick"
 	ContestUser   TypeCommandContest = "user"
 	ContestRating TypeCommandContest = "rating"
+
+	CreateUserMailing TypeCommandContest = "mailing"
 )
 
 type ContestStore struct {

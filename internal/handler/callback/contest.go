@@ -123,6 +123,28 @@ func (c *CallbackContest) CallbackDeleteContest() tgbot.ViewFunc {
 	}
 }
 
+// CallbackCreateMailing - create_mailing
+func (c *CallbackContest) CallbackCreateMailing() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+		msg, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
+			update.CallbackQuery.Message.MessageID,
+			&markup.CancelState,
+			"Для моментальной рассылки укажите текст. Отправьте следующее сообщение в виде json.\n{\n  \"сообщение\": \"сюда нужно вписать текст\"\n}")
+		if err != nil {
+			return err
+		}
+
+		c.store.Delete(update.FromChat().ID)
+		c.store.Set(&store.ContestStore{
+			MsgID:              msg,
+			UserID:             update.FromChat().ID,
+			TypeCommandContest: store.CreateUserMailing,
+		}, update.FromChat().ID)
+
+		return nil
+	}
+}
+
 // CallbackGetContestByID - contest_get_{contest_id}
 func (c *CallbackContest) CallbackGetContestByID() tgbot.ViewFunc {
 	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {

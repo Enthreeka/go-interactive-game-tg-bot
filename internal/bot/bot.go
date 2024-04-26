@@ -141,6 +141,7 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 	newBot.RegisterCommandCallback("pick_random", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackPickRandom()))
 	newBot.RegisterCommandCallback("send_message", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackSendMessage()))
 	newBot.RegisterCommandCallback("update_rating", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackUpdateRating()))
+	newBot.RegisterCommandCallback("create_mailing", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackCreateMailing()))
 
 	newBot.RegisterCommandCallback("question_setting", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackQuestionSetting()))
 	newBot.RegisterCommandCallback("create_question", middleware.AdminMiddleware(b.userService, b.callbackQuestion.CallbackCreateQuestion()))

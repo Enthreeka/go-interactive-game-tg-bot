@@ -71,6 +71,13 @@ func (b *Bot) isStoreProcessing(ctx context.Context, update *tgbotapi.Update) (b
 			}
 		}
 
+		if data.TypeCommandContest == store.CreateUserMailing {
+			if err := b.userMailing(ctx, update); err != nil {
+				b.log.Error("userMailing: %v", err)
+				return true, err
+			}
+		}
+
 		return true, nil
 	case *store.QuestionStore:
 		b.log.Info("process store.QuestionStore")
@@ -434,12 +441,61 @@ func (b *Bot) additionQuestion(ctx context.Context, update *tgbotapi.Update, dat
 		if err := b.tgMsg.SendNewMessage(
 			update.FromChat().ID,
 			nil,
-			fmt.Sprintf("Дополнительная рассылкаРассылка завершена. Отправлено пользователям: %d", totalSend),
+			fmt.Sprintf("Дополнительная рассылка завершена. Отправлено пользователям: %d", totalSend),
 		); err != nil {
 			b.log.Error("questionsService.UpdateIsSendByQuestionID: %v", err)
 			return
 		}
 	}(markupQuestion, args, questionID)
+
+	return nil
+}
+
+func (b *Bot) userMailing(ctx context.Context, update *tgbotapi.Update) error {
+	args, err := ParseJSON[entity.ArgsMailing](update.Message.Text)
+	if err != nil {
+		b.log.Error("ParseJSON: %v", err)
+		return err
+	}
+
+	user, err := b.userService.GetAllUsers(ctx)
+	if err != nil {
+		b.log.Error("userService.GetAllUsers: %v", err)
+	}
+
+	go func(user []entity.User, arg entity.ArgsMailing) {
+		var totalSend int
+
+		for _, user := range user {
+
+			if user.BlockedBot == false {
+				if err := b.tgMsg.SendNewMessage(user.ID, nil, arg.Message); err != nil {
+					b.log.Error("tgMsg.SendNewMessage in user question send: %v", err)
+
+					if strings.Contains(err.Error(), "Forbidden: bot was blocked by the user") ||
+						strings.Contains(err.Error(), "Bad Request: chat not found") {
+
+						if err := b.userService.UpdateBlockedBotStatus(context.Background(), user.ID, true); err != nil {
+							b.log.Error("userService.UpdateBlockedBotStatus: %v", err)
+						}
+
+					} else {
+						b.log.Error("error on sending: %v", err)
+					}
+				}
+				totalSend++
+			}
+		}
+
+		if err := b.tgMsg.SendNewMessage(
+			update.FromChat().ID,
+			nil,
+			fmt.Sprintf("Рассылка завершена. Отправлено пользователям: %d", totalSend),
+		); err != nil {
+			b.log.Error("questionsService.UpdateIsSendByQuestionID: %v", err)
+			return
+		}
+	}(user, args)
 
 	return nil
 }
