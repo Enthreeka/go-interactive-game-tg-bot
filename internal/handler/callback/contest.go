@@ -268,7 +268,7 @@ func (c *CallbackContest) CallbackContestReminder() tgbot.ViewFunc {
 				minu = strconv.Itoa(m)
 				minu = "0" + minu
 			}
-			text := fmt.Sprintf("Дорогие уастники! Напоминаем Вам, что у нас проходит конкурс: %s.\n"+
+			text := fmt.Sprintf("Дорогие участники! Напоминаем вам, что у нас проходит конкурс: %s.\n"+
 				"Он завершится: %d числа в %d:%s.", contest.Name, contest.Deadline.Day(), h, minu)
 
 			var totalSend int
