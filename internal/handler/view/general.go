@@ -46,8 +46,8 @@ func (v *ViewGeneral) ViewFirstMessage() tgbot.ViewFunc {
 	
 	Ещё раз эти каналы:
 	
-	Смарт инвестиции - https://t.me/+boSZNTXjmosxMGU6
-	Фонда – https://t.me/+3HolQmLEA8k3ZGMy
+	Смарт инвестиции - https://t.me/+FlDh2v_TCMEyNmUy
+	Фонда – https://t.me/+R0EVsSDDIUtmYmJi
 	Простые инвестиции − https://t.me/+plO6P6Ye6fUwMjA6
 	Биржа, деньги, хомяки − https://t.me/+sxWKWdMzElExZTZi
 	Сигналы от души − https://t.me/+-q_q3w_j5DY1ZjAy
@@ -70,6 +70,7 @@ func (v *ViewGeneral) ViewFirstMessage() tgbot.ViewFunc {
 	6. Если победителей, набравших равное количество баллов, будет несколько, мы проведём для них суперигру, чтобы выявить самых-самых!`)
 		//msg.ReplyMarkup = &markup.StartMenu
 		msg.ParseMode = tgbotapi.ModeHTML
+		msg.DisableWebPagePreview = true
 
 		if _, err := bot.Send(msg); err != nil {
 			v.log.Error("failed to send message", zap.Error(err))
