@@ -226,7 +226,7 @@ func (c *CallbackQuestion) CallbackQuestionDeleteAnswer() tgbot.ViewFunc {
 	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
 		questionID := entity.GetQuestionID(update.CallbackData())
 
-		_, markupAnswer, err := c.answersService.GetAnswersByID(ctx, questionID, "delete")
+		_, markupAnswer, err := c.answersService.GetAnswersByID(ctx, nil, questionID, "delete")
 		if err != nil {
 			c.log.Error("answersService.GetAnswerByID: failed to get answer: %v", err)
 			handler.HandleError(bot, update, boterror.ParseErrToText(err))

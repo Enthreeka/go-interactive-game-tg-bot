@@ -1,10 +1,10 @@
 services:
-  bot:
-    container_name: bot
-    build: ./
-    depends_on:
-      db:
-        condition: service_healthy
+#  bot:
+#    container_name: bot
+#    build: ./
+#    depends_on:
+#      db:
+#        condition: service_healthy
 
   db:
     image: postgres:15

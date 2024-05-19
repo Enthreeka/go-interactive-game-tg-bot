@@ -14,7 +14,7 @@ import (
 
 type AnswersService interface {
 	CreateAnswer(ctx context.Context, tx pgx.Tx, answer *entity.Answer) error
-	GetAnswersByID(ctx context.Context, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error)
+	GetAnswersByID(ctx context.Context, ans []entity.Answer, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error)
 	DeleteAnswer(ctx context.Context, id int) error
 	GetContestIDByQuestionID(ctx context.Context, questionID int) (int, error)
 	GetAnswerByID(ctx context.Context, id int) (*entity.Answer, error)
@@ -68,6 +68,7 @@ func (a *answersService) CreateAdditionalQuestionWithAnswer(ctx context.Context,
 		QuestionName:  args.Question,
 		FileID:        nil,
 	})
+	a.log.Info("CreateAdditionalQuestionWithAnswer questionRepo - questionID: %d", questionID)
 	if err != nil {
 		a.log.Error("CreateAdditionalQuestionWithAnswer: questionRepo.CreateQuestion: %v", err)
 		return 0, nil, err
@@ -85,15 +86,23 @@ func (a *answersService) CreateAdditionalQuestionWithAnswer(ctx context.Context,
 		a.log.Error("CreateAdditionalQuestionWithAnswer: answerRepo.CreateAnswers: %v", err)
 		return 0, nil, err
 	}
+	a.log.Info("CreateAdditionalQuestionWithAnswer answerRepo answerID: %v", createdID)
 
 	for _, answerID := range createdID {
+		a.log.Info("CreateAdditionalQuestionWithAnswer create questionAnswerRepo: answerID: %d, questionID: %d, "+
+			"contestID: %d", answerID, questionID, args.ContestID)
 		if err := a.questionAnswerRepo.LinkQuestionToAnswer(ctx, tx, questionID, answerID, args.ContestID); err != nil {
 			a.log.Error("questionAnswerRepo.LinkQuestionToAnswer: %v", err)
 			return 0, nil, err
 		}
 	}
 
-	_, markup, err := a.GetAnswersByID(ctx, questionID, "get")
+	err = tx.Commit(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	_, markup, err := a.GetAnswersByID(ctx, ans, questionID, "get")
 	if err != nil {
 		a.log.Error("GetAnswersByID in CreateAdditionalQuestionWithAnswer: %v", err)
 		return 0, nil, err
@@ -125,20 +134,30 @@ func (a *answersService) CreateAnswer(ctx context.Context, tx pgx.Tx, answer *en
 	return nil
 }
 
-func (a *answersService) GetAnswersByID(ctx context.Context, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error) {
-	answers, err := a.questionAnswerRepo.GetAnswersByQuestion(ctx, questionID)
+func (a *answersService) GetAnswersByID(ctx context.Context, answerFromAdmin []entity.Answer, questionID int, method string) ([]entity.Answer, *tgbotapi.InlineKeyboardMarkup, error) {
+	an := make([]entity.Answer, 0)
+
+	answersFromDB, err := a.questionAnswerRepo.GetAnswersByQuestion(ctx, questionID)
 	if err != nil {
 		a.log.Error("answerRepo.GetAnswerByID: %v", err)
 		return nil, nil, err
 	}
 
-	markup, err := a.createAnswerMarkup(answers, method)
+	a.log.Info("GetAnswersByID - answerFromDB: %v", answersFromDB)
+
+	if answersFromDB != nil {
+		an = answersFromDB
+	} else {
+		an = answerFromAdmin
+	}
+
+	markup, err := a.createAnswerMarkup(an, method)
 	if err != nil {
 		a.log.Error("createAnswerMarkup: %v", err)
 		return nil, nil, err
 	}
 
-	return answers, markup, nil
+	return an, markup, nil
 }
 
 func (q *answersService) createAnswerMarkup(answers []entity.Answer, method string) (*tgbotapi.InlineKeyboardMarkup, error) {
@@ -159,7 +178,10 @@ func (q *answersService) createAnswerMarkup(answers []entity.Answer, method stri
 		}
 	}
 
-	rows = append(rows, []tgbotapi.InlineKeyboardButton{button.MainMenuButton})
+	if method != "get" {
+		rows = append(rows, []tgbotapi.InlineKeyboardButton{button.MainMenuButton})
+	}
+	q.log.Info("%v", rows)
 	markup := tgbotapi.NewInlineKeyboardMarkup(rows...)
 
 	return &markup, nil

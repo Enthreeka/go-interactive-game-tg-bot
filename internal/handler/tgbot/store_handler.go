@@ -416,7 +416,7 @@ func (b *Bot) additionQuestion(ctx context.Context, update *tgbotapi.Update, dat
 		var totalSend int
 
 		for _, user := range arg.UsersID {
-
+			b.log.Info("%v", markupQuestion.InlineKeyboard)
 			if err := b.tgMsg.SendNewMessage(user, ma, arg.Question); err != nil {
 				b.log.Error("tgMsg.SendNewMessage in user question send: %v", err)
 
