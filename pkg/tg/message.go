@@ -6,6 +6,12 @@ import (
 	"go.uber.org/zap"
 )
 
+type Sender interface {
+	SendNewMessage(chatID int64, markup *tgbotapi.InlineKeyboardMarkup, text string) error
+	SendEditMessage(chatID int64, messageID int, markup *tgbotapi.InlineKeyboardMarkup, text string) (int, error)
+	SendDocument(chatID int64, fileName string, fileIDBytes *[]byte, text string) (int, error)
+}
+
 type TelegramMsg struct {
 	log *logger.Logger
 	bot *tgbotapi.BotAPI

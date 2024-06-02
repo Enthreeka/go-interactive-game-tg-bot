@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -26,4 +27,8 @@ func GetContestID(data string) int {
 	}
 
 	return id
+}
+
+func (c Contest) String() string {
+	return fmt.Sprintf("Айди конкурса = %d\nНаименование = %s\nДедлайн = %v\nЗакончен = %v", c.ID, c.Name, c.Deadline, c.IsCompleted)
 }

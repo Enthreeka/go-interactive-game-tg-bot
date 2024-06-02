@@ -89,5 +89,3 @@ create table if not exists history_points(
         references questions (id) on delete cascade
 );
 
-
-update user_results set total_points = 0 where contest_id = 6;

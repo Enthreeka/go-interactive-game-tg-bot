@@ -10,20 +10,22 @@ import (
 
 type UserService interface {
 	GetUserByID(ctx context.Context, id int64) (*entity.User, error)
-	CreateUserIfNotExist(ctx context.Context, user *entity.User) error
 	GetAllUsers(ctx context.Context) ([]entity.User, error)
-	UpdateBlockedBotStatus(ctx context.Context, userID int64, status bool) error
-
-	IsExistUserResultByUserID(ctx context.Context, userID int64, contestID int) (bool, error)
-	CreateUserResult(ctx context.Context, tx pgx.Tx, result *entity.UserResult) error
-	GetUserResultsByContest(ctx context.Context, userID int64, contestID int) (*entity.UserResult, error)
-	UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error
-	UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error
-	GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error)
-	UpdateRoleByUsername(ctx context.Context, role string, username string) error
-
+	SelectLessAndGreaterThan(ctx context.Context, from int, to int, contestID int) ([]int64, error)
 	GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
 	GetAllAdmin(ctx context.Context) ([]entity.User, error)
+	GetUserResultsByContest(ctx context.Context, userID int64, contestID int) (*entity.UserResult, error)
+	GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error)
+
+	UpdateBlockedBotStatus(ctx context.Context, userID int64, status bool) error
+	UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error
+	UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error
+	UpdateRoleByUsername(ctx context.Context, role string, username string) error
+
+	IsExistUserResultByUserID(ctx context.Context, userID int64, contestID int) (bool, error)
+
+	CreateUserResult(ctx context.Context, tx pgx.Tx, result *entity.UserResult) error
+	CreateUserIfNotExist(ctx context.Context, user *entity.User) error
 }
 
 type userService struct {
@@ -105,4 +107,8 @@ func (u *userService) UpdateRoleByUsername(ctx context.Context, role string, use
 
 func (u *userService) GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error) {
 	return u.userResultRepo.GetTop10UserByContest(ctx, contestID)
+}
+
+func (u *userService) SelectLessAndGreaterThan(ctx context.Context, from int, to int, contestID int) ([]int64, error) {
+	return u.userResultRepo.SelectLessAndGreaterThan(ctx, from, to, contestID)
 }

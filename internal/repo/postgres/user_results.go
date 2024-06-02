@@ -11,14 +11,17 @@ import (
 
 type UserResultRepo interface {
 	CreateUserResult(ctx context.Context, tx pgx.Tx, result *entity.UserResult) error
+
 	GetUserResultsByContest(ctx context.Context, userID int64, contestID int) (*entity.UserResult, error)
 	GetAllUserResultsByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
+	GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error)
+	GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
+	SelectLessAndGreaterThan(ctx context.Context, from int, to int, contestID int) ([]int64, error)
+
 	IsExistUserResultByUserID(ctx context.Context, userID int64, contestID int) (bool, error)
 
 	UpdateTotalPointsByUserIDAndContestID(ctx context.Context, tx pgx.Tx, userID int64, contestID int, totalPoint int) error
 	UpdateTotalPointsByContestID(ctx context.Context, contestID int, totalPoint int) error
-	GetByTotalPointsAndContestID(ctx context.Context, totalPoint, contestID int) ([]entity.UserResult, error)
-	GetTop10UserByContest(ctx context.Context, contestID int) ([]entity.UserResult, error)
 }
 
 type userResultRepo struct {
@@ -151,6 +154,32 @@ func (ur *userResultRepo) GetTop10UserByContest(ctx context.Context, contestID i
 	for rows.Next() {
 		var result entity.UserResult
 		err := rows.Scan(&result.User.TGUsername, &result.UserID, &result.ID, &result.TotalPoints)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (ur *userResultRepo) SelectLessAndGreaterThan(ctx context.Context, from int, to int, contestID int) ([]int64, error) {
+	query := `select user_id from user_results
+				where total_points >= $1 and total_points <= $2 and contest_id = $3`
+
+	rows, err := ur.Pool.Query(ctx, query, from, to, contestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []int64
+	for rows.Next() {
+		var result int64
+		err := rows.Scan(&result)
 		if err != nil {
 			return nil, err
 		}

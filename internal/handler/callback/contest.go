@@ -48,7 +48,7 @@ func (c *CallbackContest) CallbackContestSetting() tgbot.ViewFunc {
 		if _, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
 			update.CallbackQuery.Message.MessageID,
 			&markup.ContestSetting,
-			"CallbackContestSetting"); err != nil {
+			"Управление конкурсами"); err != nil {
 			return err
 		}
 
@@ -69,7 +69,7 @@ func (c *CallbackContest) CallbackGetAllContest() tgbot.ViewFunc {
 		if _, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
 			update.CallbackQuery.Message.MessageID,
 			markupContest,
-			"CallbackGetAllContest"); err != nil {
+			"Список всех конкурсов"); err != nil {
 			return err
 		}
 
@@ -160,7 +160,7 @@ func (c *CallbackContest) CallbackGetContestByID() tgbot.ViewFunc {
 		if _, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
 			update.CallbackQuery.Message.MessageID,
 			&markupContest,
-			fmt.Sprintf("%v:", contest),
+			contest.String(),
 		); err != nil {
 			return err
 		}
@@ -384,8 +384,9 @@ func (c *CallbackContest) CallbackPickRandom() tgbot.ViewFunc {
 			&markup.CancelState,
 			`Отправьте сообщение в следующем формате:`+
 				"\n{\n"+
-				`"рейтинг": сюда нужно вписать целое число,`+"\n"+
-				`"количество_людей": сюда нужно вписать целое число`+
+				`"от": сюда нужно вписать целое число,`+"\n"+
+				`"до": сюда нужно вписать целое число,`+"\n"+
+				`"сообщение": "сюда нужно вписать сообщение (Для переноса строк можно использовать - \n)"`+
 				"\n}")
 		if err != nil {
 			return err

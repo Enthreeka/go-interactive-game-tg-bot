@@ -68,7 +68,7 @@ func (c *CallbackQuestion) CallbackQuestionSetting() tgbot.ViewFunc {
 		if _, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
 			update.CallbackQuery.Message.MessageID,
 			&markupQuestion,
-			"CallbackQuestionSetting"); err != nil {
+			"Управление вопросами конкурса"); err != nil {
 			return err
 		}
 
@@ -91,7 +91,7 @@ func (c *CallbackQuestion) CallbackGetAllQuestionByContestID() tgbot.ViewFunc {
 		if _, err := c.tgMsg.SendEditMessage(update.FromChat().ID,
 			update.CallbackQuery.Message.MessageID,
 			markupQuestion,
-			"CallbackGetAllContest"); err != nil {
+			"Список всех конкурсов"); err != nil {
 			return err
 		}
 

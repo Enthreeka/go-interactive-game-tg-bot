@@ -25,8 +25,9 @@ type ArgsCreate struct {
 }
 
 type ArgsPick struct {
-	Rating     int `json:"рейтинг"`
-	UserNumber int `json:"количество_людей"`
+	From    int    `json:"от"`
+	To      int    `json:"до"`
+	Message string `json:"сообщение"`
 }
 
 type ArgsUser struct {

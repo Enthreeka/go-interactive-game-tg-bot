@@ -9,7 +9,6 @@ import (
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/tg/markup"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5"
-	"math/rand"
 	"strings"
 	"time"
 )
@@ -303,30 +302,45 @@ func (b *Bot) pickUsers(ctx context.Context, update *tgbotapi.Update, data *stor
 		return err
 	}
 
-	userResult, err := b.userService.GetByTotalPointsAndContestID(ctx, args.Rating, data.ContestID)
-	if err != nil {
-		b.log.Error("userService.GetByTotalPointsAndContestID: %v", err)
-		return err
-	}
+	go func(arg entity.ArgsPick) {
+		var totalSend int
 
-	rand.NewSource(time.Now().UnixNano())
-	rand.Shuffle(len(userResult), func(i, j int) {
-		userResult[i], userResult[j] = userResult[j], userResult[i]
-	})
+		usersID, err := b.userService.SelectLessAndGreaterThan(context.Background(), args.From, args.To, data.ContestID)
+		if err != nil {
+			b.log.Error("userService.SelectLessAndGreaterThan: %v", err)
+			if err := b.tgMsg.SendNewMessage(update.FromChat().ID, nil, fmt.Sprintf("ERROR: %v", err)); err != nil {
+				b.log.Error("questionsService.UpdateIsSendByQuestionID: %v", err)
+				return
+			}
+		}
 
-	// Выбираем первые n элементов после перемешивания
-	selectedUsers := userResult[:args.UserNumber]
+		b.log.Error("pickUsers: Get len = %d users", len(usersID))
 
-	usersByte, err := json.MarshalIndent(selectedUsers, "", "\t")
-	if err != nil {
-		b.log.Error("%v", err)
-		return err
-	}
+		for _, user := range usersID {
+			if err := b.tgMsg.SendNewMessage(user, nil, arg.Message); err != nil {
+				b.log.Error("tgMsg.SendNewMessage in user question send: %v", err)
 
-	if err := b.tgMsg.SendNewMessage(update.FromChat().ID, nil, string(usersByte)); err != nil {
-		b.log.Error("tgMsg.SendNewMessage in pickUsers:%v", err)
-		return err
-	}
+				if strings.Contains(err.Error(), "Forbidden: bot was blocked by the user") ||
+					strings.Contains(err.Error(), "Bad Request: chat not found") {
+
+					if err := b.userService.UpdateBlockedBotStatus(context.Background(), user, true); err != nil {
+						b.log.Error("userService.UpdateBlockedBotStatus: %v", err)
+					}
+
+				} else {
+					b.log.Error("error on sending: %v", err)
+				}
+			}
+			totalSend++
+		}
+
+		if err := b.tgMsg.SendNewMessage(update.FromChat().ID, nil,
+			fmt.Sprintf("Рассылка с выборкой завершена. Отправлено пользователям: %d", totalSend),
+		); err != nil {
+			b.log.Error("questionsService.UpdateIsSendByQuestionID: %v", err)
+			return
+		}
+	}(args)
 
 	return nil
 }
