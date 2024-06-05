@@ -36,35 +36,39 @@ func (c *ViewGeneral) CallbackStartAdminPanel() tgbot.ViewFunc {
 
 func (v *ViewGeneral) ViewFirstMessage() tgbot.ViewFunc {
 	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
-		msg := tgbotapi.NewMessage(update.FromChat().ID, `Друзья! Приветствуем вас на конкурсе «В преддверии лета»! 
+		msg := tgbotapi.NewMessage(update.FromChat().ID, `Рады приветствовать вас на третьем сезоне розыгрыша TG Research! 
 
-В качестве призов разыграем акции. Призовой фонд такой:
+			В качестве призов разыграем, как всегда, акции. На этот раз призовой фонд такой:
+			
+			1 место – акция Самолёта
+			2-5 место – акция Тинькофф
+			6-10 место – акция Северстали
+			11-15 место – акция Новатэк
+			
+			Если победителей будет несколько, то мы разыграем призовые акции через генератор случайных чисел среди тех, кто набрал максимум очков!
+			
+			А также среди 10 случайных участников, набравших 10 и более баллов, мы традиционно разыграем акции Татнефти! 
+			
+			Условия:
+			
+			1. Подписаться на каналы-спонсоры
+			
+			Invest Smart – https://t.me/+FlDh2v_TCMEyNmUy 
+			INSpace – https://t.me/+AsHtAzik6poxMWIx 
+			Frolov I&R – https://t.me/+9vh20vIAIrc5MjE0 
+			Первый инвестиционный – https://t.me/+jKIA54kMgYY5MmQy  
+			Капибара на бирже – https://t.me/+vM_MxX_6bZViNmJi 
+			Unique Trade – https://t.me/+fW80I16SdbwwNzky 
+			Приватка Владимир на бирже − https://t.me/+WrbxtN_P8mxmYmQ8 
+			
+			2. Ждать вопросы – их зададут прямо в этом боте.
+			
+			Конкурс продлится с 10 по 16 июня. В последний день в 20:00 мск подведём итоги. Призы раздадим 17-20 июня.
+			
+			Всем искренне желаем удачи!
+			
+			Подробности в официальной группе розыгрыша: https://t.me/tgresearh_contest.`)
 
-1 место – акция Яндекса
-2-5 место – акция Транснефти 
-6-10 место – акция Инарктики 
-11-15 место – акция Газпромнефти 
-
-Среди 10 случайных участников, набравших 5 и более баллов, традиционно разыграем акции Татнефти! 
-
-Акции будут перечислены на счёт Тинькофф. Если у вас не открыт там счёт, то вы можете сделать это по ссылке: https://partners.tinkoff.ru/click/87245a4a-e98b-43cd-b6bc-7255b91b9dc5
-
-Условия:
-
-1. Подписаться на каналы-спонсоры
-
-Vyacheslav Goodwin https://t.me/+yu5PMjq4xwJkZGJi
-Инвестор Альфа https://t.me/+sAdBODkhpQNmYjU6
-Кравцова и рынки https://t.me/+fJmgyAaZKagzZjdi
-Invest Premium https://t.me/+Qnlwt3uDpRQxY2My
-Сигналы от души https://t.me/+zAnSVfHAShI0NGQy
-Марафон инвестиций https://t.me/+gbZewNzODus2MGYy
-
-2. Ждать вопросы по содержанию каналов – чем больше баллов наберёте, тем выше шанс на выигрыш (теперь вы понимаете, почему важно подписаться на все каналы?)
-
-27 мая стартуем! И пусть победит сильнейший!
-
-Отзывы о прошлом конкурсе и дополнительную информацию вы можете посмотреть по ссылке: https://t.me/tgresearh_contest.`)
 		//msg.ReplyMarkup = &markup.StartMenu
 		msg.ParseMode = tgbotapi.ModeHTML
 		msg.DisableWebPagePreview = true
