@@ -29,6 +29,7 @@ type Bot struct {
 	answersService   service.AnswersService
 	questionsService service.QuestionsService
 	contestService   service.ContestService
+	commService      service.CommunicationService
 
 	cmdView      map[string]ViewFunc
 	callbackView map[string]ViewFunc
@@ -46,6 +47,7 @@ func NewBot(bot *tgbotapi.BotAPI,
 	answersService service.AnswersService,
 	questionsService service.QuestionsService,
 	contestService service.ContestService,
+	commService service.CommunicationService,
 ) *Bot {
 	return &Bot{
 		bot:              bot,
@@ -57,6 +59,7 @@ func NewBot(bot *tgbotapi.BotAPI,
 		answersService:   answersService,
 		questionsService: questionsService,
 		contestService:   contestService,
+		commService:      commService,
 	}
 }
 

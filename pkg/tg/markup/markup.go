@@ -30,6 +30,8 @@ var (
 
 	ContestSetting = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Поменять приветственный текст", "update_message")),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Получить список конкурсов", "get_all_contest")),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Создать конкурс", "create_contest")),

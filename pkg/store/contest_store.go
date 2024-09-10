@@ -9,6 +9,8 @@ var (
 	ContestUser   TypeCommandContest = "user"
 	ContestRating TypeCommandContest = "rating"
 
+	MessageUpdate TypeCommandContest = "update_msg"
+
 	CreateUserMailing TypeCommandContest = "mailing"
 )
 

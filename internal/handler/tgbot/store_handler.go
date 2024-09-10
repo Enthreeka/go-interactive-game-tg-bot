@@ -77,6 +77,13 @@ func (b *Bot) isStoreProcessing(ctx context.Context, update *tgbotapi.Update) (b
 			}
 		}
 
+		if data.TypeCommandContest == store.MessageUpdate {
+			if err := b.updateCommMsg(ctx, update); err != nil {
+				b.log.Error("updateCommMsg: %v", err)
+				return true, err
+			}
+		}
+
 		return true, nil
 	case *store.QuestionStore:
 		b.log.Info("process store.QuestionStore")
@@ -510,6 +517,20 @@ func (b *Bot) userMailing(ctx context.Context, update *tgbotapi.Update) error {
 			return
 		}
 	}(user, args)
+
+	return nil
+}
+
+func (b *Bot) updateCommMsg(ctx context.Context, update *tgbotapi.Update) error {
+	if err := b.commService.CreateMessage(ctx, update.Message.Text); err != nil {
+		b.log.Error("commService.CreateMessage: %v", err)
+		return err
+	}
+
+	if err := b.tgMsg.SendNewMessage(update.FromChat().ID, nil, "Текст обновлен успешно"); err != nil {
+		b.log.Error("updateCommMsg :%v", err)
+		return err
+	}
 
 	return nil
 }

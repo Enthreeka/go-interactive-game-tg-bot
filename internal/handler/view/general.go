@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"github.com/Entreeka/go-interactive-game-tg-bot/internal/handler/tgbot"
+	"github.com/Entreeka/go-interactive-game-tg-bot/internal/service"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/logger"
 	"github.com/Entreeka/go-interactive-game-tg-bot/pkg/tg/markup"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -10,12 +11,14 @@ import (
 )
 
 type ViewGeneral struct {
-	log *logger.Logger
+	log      *logger.Logger
+	commServ service.CommunicationService
 }
 
-func NewViewGeneral(log *logger.Logger) *ViewGeneral {
+func NewViewGeneral(log *logger.Logger, commServ service.CommunicationService) *ViewGeneral {
 	return &ViewGeneral{
-		log: log,
+		log:      log,
+		commServ: commServ,
 	}
 }
 
@@ -36,32 +39,13 @@ func (c *ViewGeneral) CallbackStartAdminPanel() tgbot.ViewFunc {
 
 func (v *ViewGeneral) ViewFirstMessage() tgbot.ViewFunc {
 	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
-		msg := tgbotapi.NewMessage(update.FromChat().ID, `Рады приветствовать вас на 5 сезоне конкурса TG Research! Напомним, что для победы нужно отвечать на вопросы прямо в этом боте.
+		commMsg, err := v.commServ.GetMessage(ctx)
+		if err != nil {
+			v.log.Error("failed to get communication msg: %v", err)
+			return nil
+		}
 
-Победители получат:
-
-1-3 место - акция Черкизово 
-4-10 место - акция Северстали 
-10-15 место - акция Новатэка 
-16-20 место - акция Инарктики 
-
-А среди 20 случайных участников, набравших 10 баллов и более, мы традиционно разыграем акции Татнефти!
-
-Также победители и участники получат доступы в вип-каналы, бесплатные образовательные курсы, обучающую литературу и множество других призов!
-
-Для участия нужно подписаться на каналы-спонсоры: 
-
-Инвест Эра - https://t.me/+z--4_BPTPjdlYWYy 
-Ракета инвестора - https://t.me/+q2a9vT5fpG85YTMy 
-Биржевой маклер - https://t.me/+EeKodfU2BqJjNmFi
-Кравцова и рынки - https://t.me/+3d8Ok49qx-FmMTky 
-Биржевая ключница - https://t.me/+osJ27uNmnUg5ZjMy 
-
-С 1 августа вы будете получать вопросы. Итоги подведём 11 августа, в воскресенье днём.
-
-Отзывы о предыдущих сезонах и больше подробностей - в официальной группе конкурса https://t.me/tgresearh_contest.
-
-Увидимся! Ваша команда TG Research.`)
+		msg := tgbotapi.NewMessage(update.FromChat().ID, commMsg)
 
 		//msg.ReplyMarkup = &markup.StartMenu
 		msg.ParseMode = tgbotapi.ModeHTML

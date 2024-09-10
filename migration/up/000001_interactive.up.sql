@@ -19,7 +19,6 @@ create table if not exists "user"(
 );
 
 
-
 -- todo create index for name
 create table if not exists contest(
     id int generated always as identity,
@@ -89,3 +88,6 @@ create table if not exists history_points(
         references questions (id) on delete cascade
 );
 
+create table if not exists communication(
+  message text
+);

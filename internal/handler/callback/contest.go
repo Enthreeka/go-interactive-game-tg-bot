@@ -20,6 +20,7 @@ import (
 )
 
 type CallbackContest struct {
+	commService    service.CommunicationService
 	contestService service.ContestService
 	userService    service.UserService
 	store          *store.Store
@@ -30,7 +31,9 @@ type CallbackContest struct {
 	mu sync.RWMutex
 }
 
-func NewCallbackContest(contestService service.ContestService, userService service.UserService, store *store.Store, log *logger.Logger, tgMsg *tg.TelegramMsg, excel *excel.Excel) *CallbackContest {
+func NewCallbackContest(contestService service.ContestService, userService service.UserService,
+	store *store.Store, log *logger.Logger, tgMsg *tg.TelegramMsg,
+	excel *excel.Excel, commService service.CommunicationService) *CallbackContest {
 	return &CallbackContest{
 		contestService: contestService,
 		userService:    userService,
@@ -38,6 +41,7 @@ func NewCallbackContest(contestService service.ContestService, userService servi
 		tgMsg:          tgMsg,
 		store:          store,
 		excel:          excel,
+		commService:    commService,
 	}
 }
 
@@ -457,6 +461,26 @@ func (c *CallbackContest) CallbackUpdateRating() tgbot.ViewFunc {
 			UserID:             update.FromChat().ID,
 			ContestID:          contestID,
 			TypeCommandContest: store.ContestRating,
+		}, update.FromChat().ID)
+
+		return nil
+	}
+}
+
+// CallbackUpdateMessage - update_message
+func (c *CallbackContest) CallbackUpdateMessage() tgbot.ViewFunc {
+	return func(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+
+		text := "Отправьте текст для приветственного сообщения"
+		if err := c.tgMsg.SendNewMessage(update.FromChat().ID, &markup.CancelState, text); err != nil {
+			c.log.Error("failed to send new message: %v", err)
+			return err
+		}
+
+		c.store.Delete(update.FromChat().ID)
+		c.store.Set(&store.ContestStore{
+			UserID:             update.FromChat().ID,
+			TypeCommandContest: store.MessageUpdate,
 		}, update.FromChat().ID)
 
 		return nil

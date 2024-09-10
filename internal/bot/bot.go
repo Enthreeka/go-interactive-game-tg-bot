@@ -31,6 +31,7 @@ type Bot struct {
 	questionsService service.QuestionsService
 	contestService   service.ContestService
 	userService      service.UserService
+	commService      service.CommunicationService
 
 	viewGeneral *view.ViewGeneral
 
@@ -52,18 +53,21 @@ func (b *Bot) initServices(log *logger.Logger) {
 	historyPointsRepo := pgRepo.NewHistoryPointsRepo(b.psql)
 	questionAnswerRepo := pgRepo.NewQuestionAnswerRepo(b.psql)
 	userResultRepo := pgRepo.NewUserResultRepo(b.psql)
+	commRepo := pgRepo.NewCommunicationRepo(b.psql)
 
 	b.userService = service.NewUserService(userRepo, userResultRepo, log)
 	b.answersService = service.NewAnswersService(answerRepo, questionRepo, questionAnswerRepo, historyPointsRepo, log)
 	b.questionsService = service.NewQuestionsService(questionRepo, questionAnswerRepo, historyPointsRepo, log)
 	b.contestService = service.NewContestService(contestRepo, userResultRepo, log)
+	b.commService = service.NewCommunicationService(commRepo, log)
+
 }
 
 func (b *Bot) initHandlers(log *logger.Logger) {
-	b.viewGeneral = view.NewViewGeneral(log)
+	b.viewGeneral = view.NewViewGeneral(log, b.commService)
 
 	b.callbackGeneral = callback.NewCallbackGeneral(log, b.store, b.tgMsg)
-	b.callbackContest = callback.NewCallbackContest(b.contestService, b.userService, b.store, log, b.tgMsg, b.excel)
+	b.callbackContest = callback.NewCallbackContest(b.contestService, b.userService, b.store, log, b.tgMsg, b.excel, b.commService)
 	b.callbackQuestion = callback.NewCallbackQuestion(b.questionsService, b.answersService, b.userService, log, b.store, b.tgMsg, b.excel, b.psql)
 	b.callbackUser = callback.NewCallbackUser(b.userService, log, b.store, b.tgMsg)
 }
@@ -110,7 +114,7 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 
 	b.initialize(ctx, log)
 
-	newBot := tgbot.NewBot(bot, log, b.store, b.tgMsg, psql, b.userService, b.answersService, b.questionsService, b.contestService)
+	newBot := tgbot.NewBot(bot, log, b.store, b.tgMsg, psql, b.userService, b.answersService, b.questionsService, b.contestService, b.commService)
 
 	//--admin
 	newBot.RegisterCommandView("admin", middleware.AdminMiddleware(b.userService, b.viewGeneral.CallbackStartAdminPanel()))
@@ -129,6 +133,7 @@ func (b *Bot) Run(log *logger.Logger, cfg *config.Config) error {
 	newBot.RegisterCommandCallback("admin_delete_role", middleware.AdminMiddleware(b.userService, b.callbackUser.AdminDeleteRole()))
 	newBot.RegisterCommandCallback("admin_set_role", middleware.AdminMiddleware(b.userService, b.callbackUser.AdminSetRole()))
 
+	newBot.RegisterCommandCallback("update_message", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackUpdateMessage()))
 	newBot.RegisterCommandCallback("contest_delete", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackContestDelete()))
 	newBot.RegisterCommandCallback("contest_setting", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackContestSetting()))
 	newBot.RegisterCommandCallback("get_all_contest", middleware.AdminMiddleware(b.userService, b.callbackContest.CallbackGetAllContest()))
